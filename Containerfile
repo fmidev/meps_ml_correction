@@ -9,6 +9,8 @@ RUN dnf -y install dnf-plugins-core && \
     dnf -y --setopt=install_weak_deps=False install python39 python39-pip python39-setuptools eccodes git && \
     dnf -y clean all && rm -rf /var/cache/dnf
 
+WORKDIR /meps_ml
+
 RUN git clone https://github.com/fmidev/meps_ml_correction.git
 
 RUN update-alternatives --set python3 /usr/bin/python3.9 && \
