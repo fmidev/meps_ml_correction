@@ -16,7 +16,7 @@ import matplotlib
     
 def plot_results(args, lons, lats, background, diff, output, analysistime, forecasttime, leadtimes):
     '''plot raw and ml corrected meps forecasts on map, and their difference (correction)'''
-    outfile = f"/data/statcal/projects/MEPS_WS_correction/forecasts/figures/{dt.strftime(analysistime, '%Y%m%d%H')}/"
+    outfile = f"figures/{dt.strftime(analysistime, '%Y%m%d%H')}/"
     os.makedirs(outfile, exist_ok=True)
     
     if (args.parameter == "windspeed"):

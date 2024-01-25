@@ -216,11 +216,7 @@ def create_features_data(args):
     '''Create features array which has dimensions for times, stations, variables, and 4 grids.
     In addition create metadata that contains (valid)time and leadtime.''' 
     #Station list and column nearest tells 4 closest grid points for each station
-    wrk_stationfile = args.station_list
-    if args.station_list.startswith("s3://"):
-        wrk_stationfile = read_file_from_s3(args.station_list)
- 
-    all_stations = pd.read_csv(wrk_stationfile)
+    all_stations = pd.read_csv(args.station_list)
     nearest_column = all_stations.nearest
     nearest_array = np.array(nearest_column.str[1:-1].str.split(',',expand=True).astype(int))
 
@@ -261,11 +257,7 @@ def create_features_data(args):
 
 def modify_features_for_xgb_model(args, features, metadata):
     '''Select features for given parameter, add station and time features, and add time lagged features'''
-    wrk_stationfile = args.station_list
-    if args.station_list.startswith("s3://"):
-        wrk_stationfile = read_file_from_s3(args.station_list)
-    
-    all_stations = pd.read_csv(wrk_stationfile)
+    all_stations = pd.read_csv(args.station_list)
 
     #Interpolate features to station points using 4 closest grid values
     weights  = np.array(all_stations['weights'].str[1:-1].str.split(',',expand=True).astype(float))
@@ -315,7 +307,7 @@ def modify_features_for_xgb_model(args, features, metadata):
 def ml_predict(all_features, args):
     '''Make xgb prediction and return predicted corrections in list where 
     each element is for one lead time'''
-    #Load model
+    #Load forecast field
     if (args.parameter == "windspeed"):
         forecast_point = np.sqrt(np.power(all_features[:,7],2) + np.power(all_features[:,10],2))
     elif (args.parameter == "windgust"):
@@ -323,17 +315,10 @@ def ml_predict(all_features, args):
     elif (args.parameter == "temperature"):
         forecast_point = all_features[:,4] ##HUOM vaihda tarvittaessa
 
-    wrk_modelfile = args.model
-    wrk_quantilefile = args.quantiles
-    
-    if args.model.startswith("s3://"):
-        wrk_modelfile = read_file_from_s3(args.model)
-    if args.quantiles.startswith("s3://"):
-        wrk_quantilefile = read_file_from_s3(args.quantiles)
-
+    #Load model
     xgb_model = xgb.XGBRegressor()
-    xgb_model.load_model(wrk_modelfile)
-    quantiles = np.load(wrk_quantilefile)
+    xgb_model.load_model(args.model)
+    quantiles = np.load(args.quantiles)
 
     #Predict
     xgb_predict = xgb_model.predict(all_features)
@@ -363,11 +348,7 @@ def ml_predict(all_features, args):
 
 def get_points(args):
     '''Create point variable for gridpp interpolation'''
-    wrk_stationfile = args.station_list
-    if args.station_list.startswith("s3://"):
-        wrk_stationfile = read_file_from_s3(args.station_list)
-        
-    all_stations = pd.read_csv(wrk_stationfile)
+    all_stations = pd.read_csv(args.station_list)
     
     points = gridpp.Points(
         all_stations['LAT'].to_numpy(),
