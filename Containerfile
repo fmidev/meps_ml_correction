@@ -11,13 +11,13 @@ RUN dnf -y install dnf-plugins-core && \
 
 RUN git clone https://github.com/fmidev/meps_ml_correction.git
 
-WORKDIR /meps_ml
+WORKDIR /meps_ml_correction
 
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_lsm.grib /meps_ml
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_topography.grib /meps_ml
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windspeed.csv /meps_ml
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_windspeed_20231214.npz /meps_ml
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windspeed_20231214.json /meps_ml
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_lsm.grib /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_topography.grib /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windspeed.csv /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_windspeed_20231214.npz /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windspeed_20231214.json /meps_ml_correction
 
 RUN chmod 644 meps_lsm.grib && \
     chmod 644 meps_topography.grib && \
