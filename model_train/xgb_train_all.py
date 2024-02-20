@@ -47,7 +47,7 @@ for opt, arg in options:
 if ((variable == "windspeed") | (variable == "temperature")):
     country_list = ['DEU','DNK', 'EST', 'FIN', 'LTU', 'LVA', 'NLD', 'POL', 'SWE']
 elif (variable == "windgust"):
-    ['DEU','EST','FIN','LVA','NLD','SWE'] #['DEU','DNK', 'EST', 'FIN', 'LTU', 'LVA', 'NLD', 'NOR', 'POL', 'SWE']
+    country_list = ['DEU','EST','FIN','LVA','NLD','SWE'] #['DEU','DNK', 'EST', 'FIN', 'LTU', 'LVA', 'NLD', 'NOR', 'POL', 'SWE']
     
 start = time.time()
 print(time.ctime())
