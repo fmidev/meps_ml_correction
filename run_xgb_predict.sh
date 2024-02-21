@@ -1,14 +1,16 @@
 #!/bin/bash
 # Run predict script for the meps ml correction forecast 
 #source ../../bin/activate
-#E.g. bash run_xgb_predict.sh 2024012406 "windspeed" > log/log_run_xgb_predict 
+#E.g. bash run_xgb_predict.sh 2024012406 "windspeed" "path/to/file.grib2" > log/log_run_xgb_predict 
 
 PYTHON=python3
-START_TIME=$1 #YYYYMMDDHH
+ANALYSIS_TIME=$1 #YYYYMMDDHH
 PARAMETER=$2 #"windspeed", "windgust", "temperature"
+OUTPUT_FILE=$3
 
-echo "START_TIME:" $START_TIME
+echo "ANALYSIS_TIME:" $ANALYSIS_TIME
 echo "PARAMETER:" $PARAMETER
+echo "OUTPUT_FILE:" $OUTPUT_FILE
 
 # Load local (static) data
 TOPO="meps_topography.grib"
@@ -18,7 +20,7 @@ QUANTILES="quantiles_"$PARAMETER"_20231214.npz"
 STATIONS="all_stations_"$PARAMETER".csv"
 
 # Load data from S3
-bucket="s3://routines-data/meps-ml-correction/preop/"$START_TIME"00/"
+bucket="s3://routines-data/meps-ml-correction/preop/"$ANALYSIS_TIME"00/"
 FG=$bucket"FFG-MS_10.grib2"
 LCC=$bucket"NL-0TO1_0.grib2"
 MLD=$bucket"MIXHGT-M_0.grib2"
@@ -41,11 +43,11 @@ R2=$bucket"RH-0TO1_2.grib2"
 T0=$bucket"T-K_0.grib2"
 
 #Define output file and path
-OUTPUT="/data/statcal/projects/MEPS_WS_correction/forecasts/"$PARAMETER"_"$START_TIME".grib2"
+#OUTPUT="/data/statcal/projects/MEPS_WS_correction/forecasts/"$PARAMETER"_"$ANALYSIS_TIME".grib2"
 
 #If --plot argument is used create figures file
 #mkdir -p figures
 
 #Generating ml corrected forecast for parameter
-$PYTHON xgb_predict_all.py --parameter $PARAMETER --topography_data $TOPO --landseacover_data $LC --fg_data $FG --lcc_data $LCC --mld_data $MLD --p_data $P0 --t2_data $T2 --t850_data $T850 --tke925_data $TKE925 --u10_data $U10 --u850_data $U850 --u65_data $U65 --v10_data $V10 --v850_data $V850 --v65_data $V65 --ugust_data $UGUST --vgust_data $VGUST --z500_data $Z500 --z1000_data $Z1000 --z0_data $Z0 --r2_data $R2 --t0_data $T0 --model $MODEL --quantiles $QUANTILES --station_list $STATIONS --output $OUTPUT --plot
+$PYTHON xgb_predict_all.py --parameter $PARAMETER --topography_data $TOPO --landseacover_data $LC --fg_data $FG --lcc_data $LCC --mld_data $MLD --p_data $P0 --t2_data $T2 --t850_data $T850 --tke925_data $TKE925 --u10_data $U10 --u850_data $U850 --u65_data $U65 --v10_data $V10 --v850_data $V850 --v65_data $V65 --ugust_data $UGUST --vgust_data $VGUST --z500_data $Z500 --z1000_data $Z1000 --z0_data $Z0 --r2_data $R2 --t0_data $T0 --model $MODEL --quantiles $QUANTILES --station_list $STATIONS --output $OUTPUT_FILE --plot
 
