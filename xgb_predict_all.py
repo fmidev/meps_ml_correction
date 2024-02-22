@@ -67,6 +67,7 @@ def main():
     st = time.time()
     print("lol")
     print(st)
+    time.sleep(60)
     features, metadata = create_features_data(args)
     print("Reading NWP data for", args.parameter, "takes:", round(time.time()-st, 1), "seconds")
 
