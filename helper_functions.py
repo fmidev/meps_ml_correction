@@ -221,14 +221,14 @@ def create_features_data(args):
     nearest_array = np.array(nearest_column.str[1:-1].str.split(',',expand=True).astype(int))
 
     #Retrieve data in loop to save memory, fetch only one field to python at once
-    _, _, fg, leadtime, _, forecasttime = read_grib(args.fg_data, False)
+    _, _, data, leadtime, _, forecasttime = read_grib(args.fg_data, False)
     time = [ x.strftime('%Y-%m-%d %H:%M:%S') for x in forecasttime]
     metadata = pd.DataFrame(data = {'leadtime': leadtime,'time': time})
     #Take four closest grid points and save them to features array
     point_values = data.reshape(len(data), -1)[:,nearest_array]
-    features = np.empty((len(fg), len(all_stations), 20, 4))
+    features = np.empty((len(data), len(all_stations), 20, 4))
     features[:,:,0,:] = point_values
-    del fg, leadtime, forecasttime
+    del data, leadtime, forecasttime
     i = 1
     for param_args in [args.lcc_data,args.mld_data,args.p_data,args.t2_data,args.t850_data,args.tke925_data,args.u10_data,
                        args.u850_data,args.u65_data,args.v10_data,args.v850_data,args.v65_data,args.ugust_data,
