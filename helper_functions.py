@@ -220,37 +220,25 @@ def create_features_data(args):
     nearest_column = all_stations.nearest
     nearest_array = np.array(nearest_column.str[1:-1].str.split(',',expand=True).astype(int))
 
-    _, _, fg, _, _, _ = read_grib(args.fg_data, False)
-    _, _, lcc, _, _, _ = read_grib(args.lcc_data, False)
-    _, _, mld, _, _, _ = read_grib(args.mld_data, False)
-    _, _, p, _, _, _ = read_grib(args.p_data, False)
-    _, _, t2, _, _, _ = read_grib(args.t2_data, False)
-    _, _, t850, _, _, _ = read_grib(args.t850_data, False)
-    _, _, tke925, _, _, _ = read_grib(args.tke925_data, False)
-    _, _, u10, _, _, _ = read_grib(args.u10_data, False)
-    _, _, u850, _, _, _ = read_grib(args.u850_data, False)
-    _, _, u65, _, _, _ = read_grib(args.u65_data, False)
-    _, _, v10, _, _, _ = read_grib(args.v10_data, False)
-    _, _, v850, _, _, _ = read_grib(args.v850_data, False)
-    _, _, v65, _, _, _ = read_grib(args.v65_data, False)
-    _, _, ugust, _, _, _ = read_grib(args.ugust_data, False)
-    _, _, vgust, _, _, _ = read_grib(args.vgust_data, False)
-    _, _, z500, _, _, _ = read_grib(args.z500_data, False)
-    _, _, z1000, _, _, _ = read_grib(args.z1000_data, False)
-    _, _, z0, _, _, _ = read_grib(args.z0_data, False)
-    _, _, r2, _, _, _ = read_grib(args.r2_data, False)
-    _, _, t0, leadtime, _, forecasttime = read_grib(args.t0_data, False)
-
-    features = np.empty((len(fg), len(all_stations), 20, 4))
-    i = 0
-    for data in [fg,lcc,mld,p,t2,t850,tke925,u10,u850,u65,v10,v850,v65,ugust,vgust,z500,z1000,z0,r2,t0]:
-        #Four closest grid points
-        point_values = data.reshape(len(data), -1)[:,nearest_array]
-        features[:,:,i,:] = point_values
-        i += 1
-
+    #Retrieve data in loop to save memory, fetch only one field to python at once
+    _, _, fg, leadtime, _, forecasttime = read_grib(args.fg_data, False)
     time = [ x.strftime('%Y-%m-%d %H:%M:%S') for x in forecasttime]
     metadata = pd.DataFrame(data = {'leadtime': leadtime,'time': time})
+    #Take four closest grid points and save them to features array
+    point_values = data.reshape(len(data), -1)[:,nearest_array]
+    features = np.empty((len(fg), len(all_stations), 20, 4))
+    features[:,:,0,:] = point_values
+    del fg, leadtime, forecasttime
+    i = 1
+    for param_args in [args.lcc_data,args.mld_data,args.p_data,args.t2_data,args.t850_data,args.tke925_data,args.u10_data,
+                       args.u850_data,args.u65_data,args.v10_data,args.v850_data,args.v65_data,args.ugust_data,
+                       args.vgust_data,args.z500_data,args.z1000_data,args.z0_data,args.r2_data,args.t0_data]:
+        _, _, data, _, _, _ = read_grib(param_args, False)
+        #Take four closest grid points
+        point_values = data.reshape(len(data), -1)[:,nearest_array]
+        features[:,:,i,:] = point_values
+        del data
+        i += 1
 
     return features, metadata
 
