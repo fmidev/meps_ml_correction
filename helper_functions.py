@@ -159,7 +159,7 @@ def read_grib(gribfile, read_coordinates=False):
                         lat, lon = proj_to_ll.transform(x, y)
                         lons.append(lon)
                         lats.append(lat)
-        ecc.codes_release(gh)
+            ecc.codes_release(gh)
         
 
         #Order values, leadtime, forecasttime based on leadtime
