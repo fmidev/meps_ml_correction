@@ -38,7 +38,7 @@ def load_meps_training_data(first_year, first_month, last_year, last_month, coun
         station_list_country = pd.read_csv(maa_dir + '/stations2.csv') #Z0 ja lsm lisätty tähän asemalistaan
         stations_list.append(station_list_country)
 
-        features_country = np.empty((0, len(station_list_country), 18), dtype=np.float32)
+        features_country = np.empty((0, len(station_list_country), 20), dtype=np.float32)
         labels_country = np.empty((0, len(station_list_country), 4), dtype=np.float32)
 
         for yyyy in list(range(first_year,last_year+1)):
@@ -60,7 +60,7 @@ def load_meps_training_data(first_year, first_month, last_year, last_month, coun
                 weights1  = np.array(station_list_country['weights'].str[1:-1].str.split(',',expand=True).astype(float))
                 features_part1 = np.sum(np.multiply(features_part, weights1[np.newaxis,:,np.newaxis,:]), axis=3, dtype=np.float32)
 
-                features_country = np.concatenate((features_country, features_part1[:,:,0:18]), axis=0, dtype=np.float32)
+                features_country = np.concatenate((features_country, features_part1[:,:,0:20]), axis=0, dtype=np.float32)
                 labels_country = np.concatenate((labels_country, labels_part), axis=0, dtype=np.float32)
         
         if luku==0:
@@ -100,10 +100,10 @@ def select_features(features, variable):
     fetures: three dimensional numpy.ndarray where third dimension is parameters
     variable: name of predicted variable, "windspeed", "windgust" or "temperature"
     """ 
-    #fg, lcc, mld, p, t2m, t850, tke925, u10m, u850, u60_l, v10m, v850, v60_l, ugust10m, vgust10m, z500, z1000, z0m 
+    #fg, lcc, mld, p, t2m, t850, tke925, u10m, u850, u60_l, v10m, v850, v60_l, ugust10m, vgust10m, z500, z1000, z0m, rh2m, t0m 
     if (variable == "windspeed"): features = features[:,:,0:17] 
     if (variable == "windgust"): features = features[:,:,0:17]
-    if (variable == "temperature"): features = features[:,:,[0,1,2,3,4,5]] #HUOM! muokkaa tätä kohtaa    
+    if (variable == "temperature"): features = features[:,:,[0,1,2,3,4,5,6,8,11,15,16,18,19]]
     return features
 
 
@@ -199,7 +199,7 @@ def rows_with_good_observations(observations, station_features, variable):
     if (variable == "temperature"):
         removable_stations = [10004,10007]
         remove_station_rows = np.array([value in removable_stations for value in station_features[:,6]])
-        true_rows = ~np.isnan(observations) & ~remove_station_rows & ~(observations < 320) & ~(observations > 220)
+        true_rows = ~np.isnan(observations) & ~remove_station_rows & ~(observations > 320) & ~(observations < 220)
     return true_rows 
 
 

@@ -104,15 +104,27 @@ y_trainval = forecast_errors
 print("x_train array size for xgb model:", x_trainval.shape, "\n")
 print("XGB training starts...")
 
-xgb_model = xgb.XGBRegressor(
-    tree_method = "hist",
-    n_estimators=504,#504, 
-    learning_rate=0.0117, 
-    max_depth=10, 
-    subsample=0.693,
-    colsample_bytree=0.504,
-    reg_alpha=0.714,
-    objective='reg:squarederror')
+if ((variable == "windspeed") | (variable == "windgust")):
+    xgb_model = xgb.XGBRegressor(
+            tree_method = "hist",
+            n_estimators=504,#504,
+            learning_rate=0.0117,
+            max_depth=10,
+            subsample=0.693,
+            colsample_bytree=0.504,
+            reg_alpha=0.714,
+            objective='reg:squarederror')
+
+elif (variable == "temperature"):
+    xgb_model = xgb.XGBRegressor(
+            tree_method = "hist",
+            n_estimators=1204,#504,
+            learning_rate=0.0117,
+            max_depth=10,
+            subsample=0.693,
+            colsample_bytree=0.504,
+            reg_alpha=0.714,
+            objective='reg:squarederror')
 
 start = time.time()
 xgb_model.fit(x_trainval, y_trainval)
@@ -120,7 +132,11 @@ print("XGB model run time",str(math.floor((time.time() - start)/60)) + " minutes
 
 xgb_trainval = xgb_model.predict(x_trainval)
 predict_xgb_trainval = forecasts_point - xgb_trainval
-predict_xgb_trainval[predict_xgb_trainval < 0] = 0
+
+if ((variable == "windspeed") | (variable == "windgust")):
+    predict_xgb_trainval[predict_xgb_trainval < 0] = 0
+#elif (variable == "temperature"):
+#    predict_xgb_trainval[predict_xgb_trainval < 230] = 230
 
 xgb_qm, q_obs, q_ctr = qm.q_mapping(all_observations,predict_xgb_trainval,predict_xgb_trainval,variable)
 
@@ -138,7 +154,10 @@ np.savez(model_dir + "quantiles_" + model_name + ".npz", q_obs=q_obs, q_ctr=q_ct
 
 #XGB mallien korjaukset jakauma
 predict_xgb_qm = predict_xgb_trainval.copy()
-predict_xgb_qm[predict_xgb_qm > 10] = qm.interp_extrap(x=predict_xgb_trainval[predict_xgb_qm > 10], xp=q_ctr, yp=q_obs)
+if ((variable == "windspeed") | (variable == "windgust")):
+    predict_xgb_qm[predict_xgb_qm > 10] = qm.interp_extrap(x=predict_xgb_trainval[predict_xgb_qm > 10], xp=q_ctr, yp=q_obs)
+#elif (variable == "temperature"):
+    #predict_xgb_qm[predict_xgb_qm < 260] = qm.interp_extrap(x=predict_xgb_trainval[predict_xgb_qm < 260], xp=q_ctr, yp=q_obs)
 xgb_qm_test = forecasts_point - predict_xgb_qm
 
 print("Largest corrections for train set with xgb model:")
