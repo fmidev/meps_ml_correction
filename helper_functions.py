@@ -546,7 +546,7 @@ def write_grib_message(fp, args, analysistime, forecasttime, data):
         ecc.codes_set(h, "dataTime", int(analysistime.strftime("%H%M")))
         ecc.codes_set(h, "forecastTime", forecastTime)
         ecc.codes_set(h, "centre", 86)
-        ecc.codes_set(h, "generatingProcessIdentifier", 215)
+        ecc.codes_set(h, "generatingProcessIdentifier", args.producer_id) #215 (preop), 214 (prod) 
         ecc.codes_set(h, "discipline", 0)
         ecc.codes_set(h, "parameterCategory", pcat)
         ecc.codes_set(h, "parameterNumber", pnum)

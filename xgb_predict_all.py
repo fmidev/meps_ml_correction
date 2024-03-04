@@ -46,6 +46,7 @@ def parse_command_line():
     parser.add_argument("--model", action="store", type=str, required=True)
     parser.add_argument("--quantiles", action="store", type=str, required=True)
     parser.add_argument("--station_list", action="store", type=str, required=True)
+    parser.add_argument("--producer_id", action="store", type=int, required=True)
     parser.add_argument("--output", action="store", type=str, required=True)
     parser.add_argument("--plot", action="store_true", default=False)
     parser.add_argument("--disable_multiprocessing", action="store_true", default=False)
