@@ -16,13 +16,20 @@ WORKDIR /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_lsm.grib /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_topography.grib /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windspeed.csv /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windgust.csv /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_temperature.csv /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_windspeed_20231214.npz /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windspeed_20231214.json /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_windgust_20240304.npz /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windgust_20240304.json /meps_ml_correction
 
 RUN chmod 644 meps_lsm.grib && \
     chmod 644 meps_topography.grib && \
     chmod 644 all_stations_windspeed.csv && \
+    chmod 644 all_stations_windgust.csv && \
     chmod 644 quantiles_windspeed_20231214.npz && \
     chmod 644 xgb_windspeed_20231214.json && \
+    chmod 644 quantiles_windgust_20240304.npz && \
+    chmod 644 xgb_windgust_20240304.json && \
     update-alternatives --set python3 /usr/bin/python3.9 && \
     python3 -m pip --no-cache-dir install -r requirements.txt
