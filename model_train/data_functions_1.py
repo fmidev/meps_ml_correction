@@ -197,7 +197,7 @@ def rows_with_good_observations(observations, station_features, variable):
         #Remove nan-observations (obs qc must be done beforehand)
         true_rows = ~np.isnan(observations) & ~remove_station_rows & ~(observations>55)
     if (variable == "temperature"):
-        removable_stations = [10004,10007]
+        removable_stations = [10004,10007,10067,6029,6021,6108,6044,6033,6063,2788,6285,1018,1368,1360,1047,12001,2496,2417]
         remove_station_rows = np.array([value in removable_stations for value in station_features[:,6]])
         true_rows = ~np.isnan(observations) & ~remove_station_rows & ~(observations > 320) & ~(observations < 220)
     return true_rows 
