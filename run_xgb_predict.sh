@@ -17,16 +17,13 @@ echo "OUTPUT_FILE:" $OUTPUT_FILE
 # Load local (static) data
 TOPO="meps_topography.grib"
 LC="meps_lsm.grib"
-if [ $PARAMETER="windspeed" ]
-then
+if [[ $PARAMETER == "windspeed" ]]; then
     MODEL="xgb_"$PARAMETER"_20231214.json"
     QUANTILES="quantiles_"$PARAMETER"_20231214.npz"
-elif [ $PARAMETER="windgust" ]
-then
+elif [[ $PARAMETER == "windgust" ]]; then
     MODEL="xgb_"$PARAMETER"_20240304.json"
     QUANTILES="quantiles_"$PARAMETER"_20230304.npz"
-elif [ $PARAMETER="temperature" ]
-then
+elif [[ $PARAMETER == "temperature" ]]; then
     MODEL="xgb_"$PARAMETER"_20240304.json"
     QUANTILES="quantiles_"$PARAMETER"_20230304.npz"
 fi
