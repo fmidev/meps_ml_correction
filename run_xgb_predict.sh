@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run predict script for the meps ml correction forecast 
 #source ../../bin/activate
-#E.g. bash run_xgb_predict.sh 2024012406 "windspeed" "path/to/file.grib2" > log/log_run_xgb_predict 
+#E.g. ./run_xgb_predict.sh 2024012406 "windspeed" "path/to/file.grib2" > log/log_run_xgb_predict 
 
 PYTHON=python3
 ANALYSIS_TIME=$1 #YYYYMMDDHH
@@ -14,23 +14,23 @@ echo "ANALYSIS_TIME:" $ANALYSIS_TIME
 echo "PARAMETER:" $PARAMETER
 echo "OUTPUT_FILE:" $OUTPUT_FILE
 
-# Load local (static) data
+# Local (static) data
 TOPO="meps_topography.grib"
 LC="meps_lsm.grib"
-if [[ $PARAMETER == "windspeed" ]]; then
-    MODEL="xgb_"$PARAMETER"_20231214.json"
-    QUANTILES="quantiles_"$PARAMETER"_20231214.npz"
-elif [[ $PARAMETER == "windgust" ]]; then
-    MODEL="xgb_"$PARAMETER"_20240304.json"
-    QUANTILES="quantiles_"$PARAMETER"_20230304.npz"
-elif [[ $PARAMETER == "temperature" ]]; then
-    MODEL="xgb_"$PARAMETER"_20240304.json"
-    QUANTILES="quantiles_"$PARAMETER"_20230304.npz"
-fi
 
+# Model data, datetag refers to model version
+if [[ $PARAMETER == "windspeed" ]]; then
+    DATETAG="20231214"
+elif [[ $PARAMETER == "windgust" ]]; then
+    DATETAG="20240304"
+elif [[ $PARAMETER == "temperature" ]]; then
+    DATETAG="20240308"
+fi
+MODEL="xgb_"$PARAMETER"_"$DATETAG".json"
+QUANTILES="quantiles_"$PARAMETER"_"$DATETAG".npz"
 STATIONS="all_stations_"$PARAMETER".csv"
    
-# Load data from S3
+# Data from S3
 bucket="s3://routines-data/meps-ml-correction/preop/"$ANALYSIS_TIME"00/"
 FG=$bucket"FFG-MS_10.grib2"
 LCC=$bucket"NL-0TO1_0.grib2"
@@ -52,9 +52,6 @@ Z500=$bucket"Z-M2S2_500.grib2"
 Z0=$bucket"Z-M2S2_0.grib2"
 R2=$bucket"RH-0TO1_2.grib2"
 T0=$bucket"T-K_0.grib2"
-
-#Define output file and path
-#OUTPUT="/data/statcal/projects/MEPS_WS_correction/forecasts/"$PARAMETER"_"$ANALYSIS_TIME".grib2"
 
 #If --plot argument is used create figures file
 #mkdir -p figures
