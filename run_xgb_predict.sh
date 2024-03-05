@@ -21,11 +21,11 @@ if [ $PARAMETER="windspeed" ]
 then
     MODEL="xgb_"$PARAMETER"_20231214.json"
     QUANTILES="quantiles_"$PARAMETER"_20231214.npz"
-elif [  $PARAMETER="windgust" ]
+elif [ $PARAMETER="windgust" ]
 then
     MODEL="xgb_"$PARAMETER"_20240304.json"
     QUANTILES="quantiles_"$PARAMETER"_20230304.npz"
-elif [  $PARAMETER="temperature" ]
+elif [ $PARAMETER="temperature" ]
 then
     MODEL="xgb_"$PARAMETER"_20240304.json"
     QUANTILES="quantiles_"$PARAMETER"_20230304.npz"
