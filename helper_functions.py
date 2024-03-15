@@ -305,33 +305,32 @@ def ml_predict(all_features, args):
     elif (args.parameter == "temperature"):
         forecast_point = all_features[:,4] ##HUOM vaihda tarvittaessa
 
-    #Load model
+    #Load model xgb model
     xgb_model = xgb.XGBRegressor()
     xgb_model.load_model(args.model)
-    quantiles = np.load(args.quantiles)
 
     #Predict
     xgb_predict = xgb_model.predict(all_features)
-    xgb_forecast = forecast_point - xgb_predict
 
-    #Quantile mapping for forecast
+    #Do quantile correction for windspeed and windgust
     if ((args.parameter == "windspeed") | (args.parameter == "windgust")):
+        quantiles = np.load(args.quantiles)
+        xgb_forecast = forecast_point - xgb_predict
         xgb_forecast[xgb_forecast < 0] = 0
         xgb_forecast_qm = xgb_forecast.copy()
         xgb_forecast_qm[xgb_forecast_qm > 10] = qm.interp_extrap(x=xgb_forecast[xgb_forecast > 10], xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
-    elif (args.parameter == "temperature"):
-        xgb_forecast_qm = qm.interp_extrap(x=xgb_forecast, xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
 
-    #Predictions back to forecast corrections
-    ml_correction = forecast_point - xgb_forecast_qm
-    
-    # Store data to list where each leadtime is it's own list (leadtimes: +2h..+66h)
+        #Predictions back to forecast corrections
+        ml_correction = forecast_point - xgb_forecast_qm
+    else:
+        ml_correction = xgb_predict
+        
+    # Store data to list where each leadtime is own item (leadtimes: +2h..+66h)
     ml_results = []
     leadtimes = all_features[:,-7]
 
     for j in range(2, 67):
-        ml_correction_lt = ml_correction[leadtimes == j]
-        ml_results.append(ml_correction_lt)
+        ml_results.append(ml_correction[leadtimes == j])
 
     return ml_results
 
