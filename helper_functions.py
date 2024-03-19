@@ -256,7 +256,7 @@ def modify_features_for_xgb_model(args, features, metadata):
     #Select features for given parameter
     if (args.parameter == "windspeed"): features = features[:,:,0:17]
     if (args.parameter == "windgust"): features = features[:,:,0:17]
-    if (args.parameter == "temperature"): features = features[:,:,[1,2,3,4,10,11,17,18,19]]
+    if (args.parameter == "temperature"): features = features[:,:,[0,1,2,3,4,5,6,8,11,15,16,18,19]]
 
     #Time lagged features, now 2 lags
     n_lags = 2
