@@ -20,14 +20,14 @@ LC="meps_lsm.grib"
 
 # Model data, datetag refers to model version
 if [[ $PARAMETER == "windspeed" ]]; then
-    DATETAG=$WS_TAG
+    DATETAG=$WS_TAG #TAGs are defined in Containerfile
     #DATETAG="20231214"
 elif [[ $PARAMETER == "windgust" ]]; then
     DATETAG=$WG_TAG
     #DATETAG="20240304"
 elif [[ $PARAMETER == "temperature" ]]; then
     DATETAG=$TA_TAG
-    #DATETAG="20240308"
+    #DATETAG="20240318"
 fi
 MODEL="xgb_"$PARAMETER"_"$DATETAG".json"
 QUANTILES="quantiles_"$PARAMETER"_"$DATETAG".npz"

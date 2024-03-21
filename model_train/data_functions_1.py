@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+'# -*- coding: utf-8 -*-
 """
 Created on Wed Nov 29 15:22:33 2023
 
@@ -219,7 +219,6 @@ def combine_all_features(features, time_features, station_features, true_rows):
 def calculate_point_forecasts(features, true_rows, variable):
     """
     This function returns forecast values for selected variable
-    - stations_all: pandas dataframe that contains column for weights
     - features: three dimensional numpy.ndarray
     - true_row: true-false-array for rows where nan-values and bad stations are false
     - variable: name of predicted variable, "windspeed", "windgust" or "temperature"
