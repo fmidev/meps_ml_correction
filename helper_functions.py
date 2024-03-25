@@ -164,7 +164,8 @@ def read_grib(gribfile, read_coordinates=False):
         
 
         #Order values, leadtime, forecasttime based on leadtime
-        values = [values[i] for i in np.array(leadtime)]
+        sorted_indices = np.argsort(leadtime)
+        values = values[sorted_indices]
         leadtime.sort()
         forecasttime.sort()
                                                         
