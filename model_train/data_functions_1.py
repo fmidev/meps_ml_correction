@@ -1,4 +1,4 @@
-'# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Created on Wed Nov 29 15:22:33 2023
 
@@ -60,7 +60,7 @@ def load_meps_training_data(first_year, first_month, last_year, last_month, coun
                 weights1  = np.array(station_list_country['weights'].str[1:-1].str.split(',',expand=True).astype(float))
                 features_part1 = np.sum(np.multiply(features_part, weights1[np.newaxis,:,np.newaxis,:]), axis=3, dtype=np.float32)
 
-                features_country = np.concatenate((features_country, features_part1[:,:,0:20]), axis=0, dtype=np.float32)
+                features_country = np.concatenate((features_country, features_part1[:,:,:]), axis=0, dtype=np.float32)
                 labels_country = np.concatenate((labels_country, labels_part), axis=0, dtype=np.float32)
         
         if luku==0:
