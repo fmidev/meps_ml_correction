@@ -48,8 +48,8 @@ def generate_date(begin,end,step):
 """
 make a nearest point list for stations
 """
-def make_points():
-    df = pd.read_csv("training_sl.csv")
+def make_points(stationfile):
+    df = pd.read_csv(stationfile)
     df['nearest'] = df['nearest'].apply(literal_eval)
     y = dict()
     for country in countries:
@@ -74,8 +74,8 @@ def generate_grib(start,end,step,points,stations,station_list):
     
     while(date != end):
         index = get_index(s3,date)
-        obs = pd.concat([obs_from_smartmet(date,date + datetime.timedelta(hours=80),1,['wmo','time','WSP_PT10M_AVG','winddirection','windgust'],stations['FIN']).rename(columns={"WSP_PT10M_AVG": "windspeed"}),
-                        pd.concat([obs_from_smartmet(date,date + datetime.timedelta(hours=79),1,['wmo','time','windspeed','winddirection','windgust'],s,'foreign') for k,s in stations.items()])])
+        obs = pd.concat([obs_from_smartmet(date,date + datetime.timedelta(hours=80),1,['wmo','time','WSP_PT10M_AVG','WD_PT10M_AVG','WG_PT1H_MAX','TA_PT1M_AVG','TD_PT1M_AVG'],stations['FIN']).rename(columns={"WSP_PT10M_AVG": "windspeed", "WD_PT10M_AVG": "winddirection", "WG_PT1H_MAX": "windgust", "TA_PT1M_AVG": "temperature", "TD_PT1M_AVG": "dewpoint_temperature"}),
+                        pd.concat([obs_from_smartmet(date,date + datetime.timedelta(hours=79),1,['wmo','time','WS_PT10M_AVG','WD_PT10M_AVG','WG_PT1H_MAX','TA_PT1M_AVG','TD_PT1M_AVG'],s,'foreign').rename(columns={"WS_PT10M_AVG": "windspeed", "WD_PT10M_AVG": "winddirection", "WG_PT1H_MAX": "windgust", "TA_PT1M_AVG": "temperature", "TD_PT1M_AVG": "dewpoint_temperature"}) for k,s in stations.items()])])
         for leadtime in range(67):
             print(date)
             mydate = date + datetime.timedelta(hours=leadtime)
@@ -144,7 +144,7 @@ def main():
     startdate = datetime.datetime(year,month,1)
     enddate = startdate + relativedelta(months=1)
 
-    f = generate_grib(startdate.strftime('%Y-%m-%dT%H:%M:%S'),enddate.strftime('%Y-%m-%dT%H:%M:%S'),12,make_points(),stations,station_list)
+    f = generate_grib(startdate.strftime('%Y-%m-%dT%H:%M:%S'),enddate.strftime('%Y-%m-%dT%H:%M:%S'),12,make_points(stationfile),stations,station_list)
     
     A = dict()
     B = dict()
