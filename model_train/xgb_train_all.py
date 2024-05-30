@@ -33,7 +33,7 @@ from data_functions_1 import calculate_point_forecasts
 options, remainder = getopt.getopt(sys.argv[1:],[],['variable=','first_year=','first_month=','last_year=','last_month=','model_name=','training_data_dir=','model_dir=','help'])
 for opt, arg in options:
     if opt == '--help':
-        print('xgb_train_all.py variable=windspeed, windgust or temperature, first_year=2021, first_month=4, last_year=2023, last_month=9, model_name=ws_xgb_model_20231211, training_data_dir=input data directory, model_dir=output data directory')
+        print('xgb_train_all.py variable=windspeed, windgust, temperature or dewpoint, first_year=2021, first_month=4, last_year=2023, last_month=9, model_name=ws_xgb_model_20231211, training_data_dir=input data directory, model_dir=output data directory')
         exit()
     elif opt == '--variable': variable = arg
     elif opt == '--first_year': first_year = int(arg)
@@ -44,10 +44,12 @@ for opt, arg in options:
     elif opt == '--training_data_dir': training_data_dir = arg
     elif opt == '--model_dir': model_dir = arg
 
-if ((variable == "windspeed") | (variable == "temperature")):
+if (variable == "windspeed"):
     country_list = ['DEU','DNK', 'EST', 'FIN', 'LTU', 'LVA', 'NLD', 'POL', 'SWE']
 elif (variable == "windgust"):
-    country_list = ['DEU','EST','FIN','LVA','NLD','SWE'] #['DEU','DNK', 'EST', 'FIN', 'LTU', 'LVA', 'NLD', 'NOR', 'POL', 'SWE']
+    country_list = ['DEU','EST','FIN','LVA','NLD','SWE']
+elif ((variable == "temperature") | (variable == "dewpoint")):
+    country_list = ['DEU','DNK', 'EST', 'FIN', 'LTU', 'LVA', 'NLD', 'NOR', 'POL', 'SWE']
     
 start = time.time()
 print(time.ctime())
@@ -107,7 +109,7 @@ print("XGB training starts...")
 if ((variable == "windspeed") | (variable == "windgust")):
     xgb_model = xgb.XGBRegressor(
             tree_method = "hist",
-            n_estimators=504,#504,
+            n_estimators=504,
             learning_rate=0.0117,
             max_depth=10,
             subsample=0.693,
@@ -115,15 +117,15 @@ if ((variable == "windspeed") | (variable == "windgust")):
             reg_alpha=0.714,
             objective='reg:squarederror')
 
-elif (variable == "temperature"):
+elif ((variable == "temperature") | (variable == "dewpoint")):
     xgb_model = xgb.XGBRegressor(
             tree_method = "hist",
-            n_estimators=1204,#504,
-            learning_rate=0.0117,
+            n_estimators=830,
+            learning_rate=0.0417,
             max_depth=10,
-            subsample=0.693,
-            colsample_bytree=0.504,
-            reg_alpha=0.714,
+            subsample=0.845,
+            colsample_bytree=0.726,
+            reg_alpha=0.606,
             objective='reg:squarederror')
 
 start = time.time()

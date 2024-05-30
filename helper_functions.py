@@ -196,6 +196,8 @@ def read_grid(args):
     # Define the grib-file used as background/"parameter_data"
     if args.parameter == "temperature":
         lons, lats, vals, leadtime, analysistime, forecasttime = read_grib(args.t2_data, True)
+    elif args.parameter == "dewpoint":
+        lons, lats, vals, leadtime, analysistime, forecasttime = read_grib(args.td2_data, True)
     elif args.parameter == "windspeed":
         lons, lats, vals_u, leadtime, analysistime, forecasttime = read_grib(args.u10_data, True)
         _, _, vals_v, _, _, _ = read_grib(args.v10_data, True)
@@ -258,6 +260,7 @@ def modify_features_for_xgb_model(args, features, metadata):
     if (args.parameter == "windspeed"): features = features[:,:,0:17]
     if (args.parameter == "windgust"): features = features[:,:,0:17]
     if (args.parameter == "temperature"): features = features[:,:,[0,1,2,3,4,5,6,8,11,15,16,18,19]]
+    if (args.parameter == "dewpoint"): features = features[:,:,[0,1,2,3,4,5,6,8,9,11,12,15,16,18,19]]
 
     #Time lagged features, now 2 lags
     n_lags = 2
@@ -298,14 +301,22 @@ def modify_features_for_xgb_model(args, features, metadata):
 def ml_predict(all_features, args):
     '''Make xgb prediction and return predicted corrections in list where 
     each element is for one lead time'''
-    #Load forecast field
+    #Load forecast field #Obs! Column number depends on selected features
     if (args.parameter == "windspeed"):
         forecast_point = np.sqrt(np.power(all_features[:,7],2) + np.power(all_features[:,10],2))
     elif (args.parameter == "windgust"):
         forecast_point = all_features[:,0]
     elif (args.parameter == "temperature"):
-        forecast_point = all_features[:,4] ##HUOM vaihda tarvittaessa
-
+        forecast_point = all_features[:,4]
+    elif (args.parameter == "dewpoint"):
+        T = all_features[:,4]
+        RH = all_features[:,13] #RH is 0...1 (not in percents)
+        RH[RH == 0] = 0.001
+        RH[RH>1] = 1
+        L = 461.5
+        Rw = 2.501*10**6
+        forecasts_point = T/(1-(T*np.log(RH)*(L/Rw))) #Same formula than in himan calculation
+        
     #Load model xgb model
     xgb_model = xgb.XGBRegressor()
     xgb_model.load_model(args.model)
@@ -484,6 +495,8 @@ def ml_corrected_forecasts(args, forecasttime, background, diff):
             tmp_output = np.clip(tmp_output, 0, 50)
         elif args.parameter == "temperature":
             tmp_output = np.clip(tmp_output, 218, 318)
+        elif args.parameter == "dewpoint":
+            tmp_output = np.clip(tmp_output, 208, 313)
         output.append(tmp_output)
 
     forecasttime = forecasttime[n_lags:]
@@ -498,6 +511,10 @@ def write_grib_message(fp, args, analysistime, forecasttime, data):
     if args.parameter == "temperature":
         levelvalue = 2
         pnum = 0
+        pcat = 0
+    elif args.parameter == "dewpoint":
+        levelvalue = 2
+        pnum = 6
         pcat = 0
     elif args.parameter == "windspeed":
         pcat = 2

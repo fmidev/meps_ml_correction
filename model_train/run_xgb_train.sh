@@ -6,7 +6,7 @@
 echo "run_xgb_train.sh alkaa"
 date
 
-variable=$1 #"windspeed", "windgust", "temperature"
+variable=$1 #"windspeed", "windgust", "temperature", "dewpoint"
 date_tag=$2
 first_year=2021
 first_month=4

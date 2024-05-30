@@ -5,7 +5,7 @@
 
 PYTHON=python3
 ANALYSIS_TIME=$1 #YYYYMMDDHH
-PARAMETER=$2 #"windspeed", "windgust", "temperature"
+PARAMETER=$2 #"windspeed", "windgust", "temperature", "dewpoint"
 OUTPUT_FILE=$3
 
 PRODUCER_ID=215
@@ -28,6 +28,9 @@ elif [[ $PARAMETER == "windgust" ]]; then
 elif [[ $PARAMETER == "temperature" ]]; then
     DATETAG=$TA_TAG
     #DATETAG="20240318"
+elif [[ $PARAMETER == "dewpoint" ]]; then
+    DATETAG=$TD_TAG
+    #DATETAG="20240530"
 fi
 MODEL="xgb_"$PARAMETER"_"$DATETAG".json"
 QUANTILES="quantiles_"$PARAMETER"_"$DATETAG".npz"
@@ -55,10 +58,11 @@ Z500=$bucket"Z-M2S2_500.grib2"
 Z0=$bucket"Z-M2S2_0.grib2"
 R2=$bucket"RH-0TO1_2.grib2"
 T0=$bucket"T-K_0.grib2"
+TD2=$bucket"TD-K_0.grib2"
 
 #If --plot argument is used create figures file
 #mkdir -p figures
 
 #Generating ml corrected forecast for parameter
-$PYTHON xgb_predict_all.py --parameter $PARAMETER --topography_data $TOPO --landseacover_data $LC --fg_data $FG --lcc_data $LCC --mld_data $MLD --p_data $P0 --t2_data $T2 --t850_data $T850 --tke925_data $TKE925 --u10_data $U10 --u850_data $U850 --u65_data $U65 --v10_data $V10 --v850_data $V850 --v65_data $V65 --ugust_data $UGUST --vgust_data $VGUST --z500_data $Z500 --z1000_data $Z1000 --z0_data $Z0 --r2_data $R2 --t0_data $T0 --model $MODEL --quantiles $QUANTILES --station_list $STATIONS --producer_id $PRODUCER_ID --output $OUTPUT_FILE
+$PYTHON xgb_predict_all.py --parameter $PARAMETER --topography_data $TOPO --landseacover_data $LC --fg_data $FG --lcc_data $LCC --mld_data $MLD --p_data $P0 --t2_data $T2 --t850_data $T850 --tke925_data $TKE925 --u10_data $U10 --u850_data $U850 --u65_data $U65 --v10_data $V10 --v850_data $V850 --v65_data $V65 --ugust_data $UGUST --vgust_data $VGUST --z500_data $Z500 --z1000_data $Z1000 --z0_data $Z0 --r2_data $R2 --t0_data $T0 --td2_data $TD2 --model $MODEL --quantiles $QUANTILES --station_list $STATIONS --producer_id $PRODUCER_ID --output $OUTPUT_FILE
 

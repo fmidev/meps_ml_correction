@@ -58,7 +58,8 @@ def q_mapping(obs,ctr,scn,variable,nq=10000,q_obs=False,q_ctr=False):
         #ctr = np.delete(ctr, ind)
         if (variable == "windspeed"): ind = obs < 35
         if (variable == "windgust"): ind = obs < 45
-        if (variable == "temperature"): ind = (obs > 233) & (obs < 313) 
+        if (variable == "temperature"): ind = (obs > 233) & (obs < 313)
+        if (variable == "dewpoint"): ind = (obs > 233) & (obs < 305)
         obs = obs[ind]
         ctr = ctr[ind]
         

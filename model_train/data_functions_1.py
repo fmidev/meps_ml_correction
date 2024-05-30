@@ -39,7 +39,7 @@ def load_meps_training_data(first_year, first_month, last_year, last_month, coun
         stations_list.append(station_list_country)
 
         features_country = np.empty((0, len(station_list_country), 20), dtype=np.float32)
-        labels_country = np.empty((0, len(station_list_country), 4), dtype=np.float32)
+        labels_country = np.empty((0, len(station_list_country), 5), dtype=np.float32)
 
         for yyyy in list(range(first_year,last_year+1)):
             for mm in [1,2,3,4,5,6,7,8,9,10,11,12]:
@@ -98,12 +98,13 @@ def select_features(features, variable):
     """ 
     This function selects feature parameters that are used for that variable
     fetures: three dimensional numpy.ndarray where third dimension is parameters
-    variable: name of predicted variable, "windspeed", "windgust" or "temperature"
+    variable: name of predicted variable, "windspeed", "windgust", "temperature" or "dewpoint"
     """ 
     #fg, lcc, mld, p, t2m, t850, tke925, u10m, u850, u60_l, v10m, v850, v60_l, ugust10m, vgust10m, z500, z1000, z0m, rh2m, t0m 
     if (variable == "windspeed"): features = features[:,:,0:17] 
     if (variable == "windgust"): features = features[:,:,0:17]
     if (variable == "temperature"): features = features[:,:,[0,1,2,3,4,5,6,8,11,15,16,18,19]]
+    if (variable == "dewpoint"): features = features[:,:,[0,1,2,3,4,5,6,8,9,11,12,15,16,18,19]]
     return features
 
 
@@ -169,12 +170,13 @@ def select_observation_variable(labels, lt_ehto, variable):
     This function selects given variable data from labels array
     - labels: three dimensional numpy.ndarray where third dimension is variable
     - lt_ehto: true-false-array that shows which rows have to be removed due to lagging
-    - variable: name of predicted variable, "windspeed", "windgust" or "temperature"
+    - variable: name of predicted variable, "windspeed", "windgust", "temperature" or "dewpoint"
     """ 
     if (variable == "windspeed"): observations = labels[lt_ehto,:,0].reshape(-1)
     if (variable == "winddirection"): observations = labels[lt_ehto,:,1].reshape(-1)
     if (variable == "windgust"): observations = labels[lt_ehto,:,2].reshape(-1)
     if (variable == "temperature"): observations = labels[lt_ehto,:,3].reshape(-1)
+    if (variable == "dewpoint"): observations = labels[lt_ehto,:,4].reshape(-1)
     return observations
 
 
@@ -183,7 +185,7 @@ def rows_with_good_observations(observations, station_features, variable):
     This function gives true-false-array for rows where nan-values and bad stations are false
     - observations: numpy array of observations 
     - station_features: numpy array of station features where 7th column is wmo number
-    - variable: name of predicted variable, "windspeed", "windgust" or "temperature"
+    - variable: name of predicted variable, "windspeed", "windgust", "temperature" or "dewpoint"
     """
     if (variable == "windspeed"):
         removable_stations = [10067,6021,6108,6044,6033,6063,1018,1368,1360,1047,12001,2496]
@@ -200,6 +202,10 @@ def rows_with_good_observations(observations, station_features, variable):
         removable_stations = [10004,10007,10067,6029,6021,6108,6044,6033,6063,2788,6285,1018,1368,1360,1047,12001,2496,2417]
         remove_station_rows = np.array([value in removable_stations for value in station_features[:,6]])
         true_rows = ~np.isnan(observations) & ~remove_station_rows & ~(observations > 320) & ~(observations < 220)
+    if (variable == "dewpoint"):
+        removable_stations = [10004,10007,10067,6029,6021,6108,6044,6033,6063,2788,6285,1018,1368,1360,1047,12001,2496,2417]
+        remove_station_rows = np.array([value in removable_stations for value in station_features[:,6]])
+        true_rows = ~np.isnan(observations) & ~remove_station_rows & ~(observations < 210) & ~(observations > 310)
     return true_rows 
 
 
@@ -221,12 +227,20 @@ def calculate_point_forecasts(features, true_rows, variable):
     This function returns forecast values for selected variable
     - features: three dimensional numpy.ndarray
     - true_row: true-false-array for rows where nan-values and bad stations are false
-    - variable: name of predicted variable, "windspeed", "windgust" or "temperature"
+    - variable: name of predicted variable, "windspeed", "windgust", "temperature" or "dewpoint"
     """
     features2 = features.reshape(features.shape[0]*features.shape[1],features.shape[2])
     if (variable=="windspeed"): forecasts_point = np.sqrt(np.power(features2[:,7][true_rows],2) + np.power(features2[:,10][true_rows],2)) 
     if (variable=="windgust"): forecasts_point = features2[:,0][true_rows] 
-    if (variable=="temperature"): forecasts_point = features2[:,4][true_rows] 
+    if (variable=="temperature"): forecasts_point = features2[:,4][true_rows]
+    if (variable=="dewpoint"):
+        T = features2[:,4][true_rows] #Obs! Column number depends on selected features
+        RH = features2[:,13][true_rows] #Obs! RH is 0...1 not in percents
+        RH[RH == 0] = 0.001
+        RH[RH>1] = 1
+        L = 461.5
+        Rw = 2.501*10**6
+        forecasts_point = T/(1-(T*np.log(RH)*(L/Rw))) #Same formula than in himan calculation
     return forecasts_point
 
 

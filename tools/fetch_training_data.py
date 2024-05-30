@@ -74,8 +74,8 @@ def generate_grib(start,end,step,points,stations,station_list):
     
     while(date != end):
         index = get_index(s3,date)
-        obs = pd.concat([obs_from_smartmet(date,date + datetime.timedelta(hours=80),1,['wmo','time','WSP_PT10M_AVG','WD_PT10M_AVG','WG_PT1H_MAX','TA_PT1M_AVG','TD_PT1M_AVG'],stations['FIN']).rename(columns={"WSP_PT10M_AVG": "windspeed", "WD_PT10M_AVG": "winddirection", "WG_PT1H_MAX": "windgust", "TA_PT1M_AVG": "temperature", "TD_PT1M_AVG": "dewpoint_temperature"}),
-                        pd.concat([obs_from_smartmet(date,date + datetime.timedelta(hours=79),1,['wmo','time','WS_PT10M_AVG','WD_PT10M_AVG','WG_PT1H_MAX','TA_PT1M_AVG','TD_PT1M_AVG'],s,'foreign').rename(columns={"WS_PT10M_AVG": "windspeed", "WD_PT10M_AVG": "winddirection", "WG_PT1H_MAX": "windgust", "TA_PT1M_AVG": "temperature", "TD_PT1M_AVG": "dewpoint_temperature"}) for k,s in stations.items()])])
+        obs = pd.concat([obs_from_smartmet(date,date + datetime.timedelta(hours=66),1,['wmo','time','WSP_PT10M_AVG','WD_PT10M_AVG','WG_PT1H_MAX','TA_PT1M_AVG','TD_PT1M_AVG'],stations['FIN']).rename(columns={"WSP_PT10M_AVG": "windspeed", "WD_PT10M_AVG": "winddirection", "WG_PT1H_MAX": "windgust", "TA_PT1M_AVG": "temperature", "TD_PT1M_AVG": "dewpoint"}),
+                        pd.concat([obs_from_smartmet(date,date + datetime.timedelta(hours=66),1,['wmo','time','WS_PT10M_AVG','WD_PT10M_AVG','WG_PT1H_MAX','TA_PT1M_AVG','TD_PT1M_AVG'],s,'foreign').rename(columns={"WS_PT10M_AVG": "windspeed", "WD_PT10M_AVG": "winddirection", "WG_PT1H_MAX": "windgust", "TA_PT1M_AVG": "temperature", "TD_PT1M_AVG": "dewpoint"}) for k,s in stations.items()])])
         for leadtime in range(67):
             print(date)
             mydate = date + datetime.timedelta(hours=leadtime)
@@ -94,8 +94,8 @@ def generate_grib(start,end,step,points,stations,station_list):
                 n += 1
 
             for country in countries:
-                y = pd.merge(station_list[station_list['Country'] == country],obs.loc[obs['time'] == mydate.strftime('%Y%m%dT%H%M%S')][["wmo","windspeed","winddirection","windgust"]].rename(columns={"wmo" : "WMON"}),how='left',on='WMON')[["windspeed","winddirection","windgust"]].to_numpy()
-                yield np.transpose(x[country],[0,2,1,3]),y.reshape([1,len(points[country])//4,3]),[leadtime,mydate]
+                y = pd.merge(station_list[station_list['Country'] == country],obs.loc[obs['time'] == mydate.strftime('%Y%m%dT%H%M%S')][["wmo","windspeed","winddirection","windgust","temperature","dewpoint"]].rename(columns={"wmo" : "WMON"}),how='left',on='WMON')[["windspeed","winddirection","windgust","temperature","dewpoint"]].to_numpy()
+                yield np.transpose(x[country],[0,2,1,3]),y.reshape([1,len(points[country])//4,5]),[leadtime,mydate]
             
         date += step
 

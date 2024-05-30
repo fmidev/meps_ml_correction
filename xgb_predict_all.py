@@ -43,6 +43,7 @@ def parse_command_line():
     parser.add_argument("--z0_data", action="store", type=str, required=True)
     parser.add_argument("--r2_data", action="store", type=str, required=True)
     parser.add_argument("--t0_data", action="store", type=str, required=True)
+    parser.add_argument("--td2_data", action="store", type=str, required=True)
     parser.add_argument("--model", action="store", type=str, required=True)
     parser.add_argument("--quantiles", action="store", type=str, required=True)
     parser.add_argument("--station_list", action="store", type=str, required=True)
@@ -53,7 +54,7 @@ def parse_command_line():
     
     args = parser.parse_args()
     
-    allowed_params = ["temperature", "windspeed", "windgust"]
+    allowed_params = ["dewpoint","temperature", "windspeed", "windgust"]
     if args.parameter not in allowed_params:
         print("Error: parameter must be one of: {}".format(allowed_params))
         sys.exit(1)
