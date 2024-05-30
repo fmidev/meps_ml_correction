@@ -331,6 +331,7 @@ def ml_predict(all_features, args):
         xgb_forecast[xgb_forecast < 0] = 0
         xgb_forecast_qm = xgb_forecast.copy()
         xgb_forecast_qm[xgb_forecast_qm > 10] = qm.interp_extrap(x=xgb_forecast[xgb_forecast > 10], xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
+        xgb_forecast_qm[xgb_forecast_qm < 2] = qm.interp_extrap(x=xgb_forecast[xgb_forecast < 2], xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
 
         #Predictions back to forecast corrections
         ml_correction = forecast_point - xgb_forecast_qm
