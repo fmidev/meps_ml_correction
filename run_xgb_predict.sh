@@ -58,7 +58,7 @@ Z500=$bucket"Z-M2S2_500.grib2"
 Z0=$bucket"Z-M2S2_0.grib2"
 R2=$bucket"RH-0TO1_2.grib2"
 T0=$bucket"T-K_0.grib2"
-TD2=$bucket"TD-K_0.grib2"
+TD2=$bucket"TD-K_2.grib2"
 
 #If --plot argument is used create figures file
 #mkdir -p figures
