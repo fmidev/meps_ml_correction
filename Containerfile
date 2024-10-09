@@ -13,8 +13,10 @@ WORKDIR /meps_ml_correction
 
 ENV WS_TAG=20231214
 ENV WG_TAG=20240304
-ENV TA_TAG=20240530
-ENV TD_TAG=20240529
+ENV TA_TAG=20241009
+ENV TD_TAG=20241009
+ENV TMAX_TAG=20241009
+ENV TMIN_TAG=20241009
 
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_lsm.grib /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_topography.grib /meps_ml_correction
@@ -26,10 +28,14 @@ ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windspeed_$WS_TAG.json 
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windgust_$WG_TAG.json /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_temperature_$TA_TAG.json /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_dewpoint_$TD_TAG.json /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_t_max_$TMAX_TAG.json /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_t_min_$TMIN_TAG.json /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_windspeed_$WS_TAG.npz /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_windgust_$WG_TAG.npz /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_temperature_$TA_TAG.npz /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_dewpoint_$TD_TAG.npz /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_t_max_$TMAX_TAG.npz /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_t_min_$TMIN_TAG.npz /meps_ml_correction
 
 RUN chmod 644 meps_lsm.grib && \
     chmod 644 meps_topography.grib && \
@@ -45,5 +51,9 @@ RUN chmod 644 meps_lsm.grib && \
     chmod 644 xgb_temperature_$TA_TAG.json && \
     chmod 644 quantiles_dewpoint_$TD_TAG.npz && \
     chmod 644 xgb_dewpoint_$TD_TAG.json && \
+    chmod 644 quantiles_t_max_$TMAX_TAG.npz && \
+    chmod 644 xgb_t_max_$TMAX_TAG.json && \
+    chmod 644 quantiles_t_min_$TMIN_TAG.npz && \
+    chmod 644 xgb_t_min_$TMIN_TAG.json \
     update-alternatives --set python3 /usr/bin/python3.9 && \
     python3 -m pip --no-cache-dir install -r requirements.txt
