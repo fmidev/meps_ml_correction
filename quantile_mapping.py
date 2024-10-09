@@ -52,14 +52,13 @@ def q_mapping(obs,ctr,scn,variable,nq=10000,q_obs=False,q_ctr=False):
         # Calculate quantile locations to be used in the next step
         q_intrvl = 100/float(nq); qtl_locs = np.arange(0,100+q_intrvl,q_intrvl) 
 
-        #Pitää ehkä tehdä joku rajaus että kaikista äärevimmät 5-10 havaintoa poistetaan, koska ne muuten dominoivat liikaa
-        #ind = np.argpartition(obs, -10)[-10:]
-        #obs = np.delete(obs, ind)
-        #ctr = np.delete(ctr, ind)
-        if (variable == "windspeed"): ind = obs < 35
-        if (variable == "windgust"): ind = obs < 45
-        if (variable == "temperature"): ind = (obs > 233) & (obs < 313)
-        if (variable == "dewpoint"): ind = (obs > 233) & (obs < 305)
+        #Threshold values for observations and forecasts to be included in the quantile mapping
+        if (variable == "windspeed"): ind = (obs < 35) & (ctr < 35)
+        if (variable == "windgust"): ind = (obs < 45) & (ctr < 45)
+        if (variable == "temperature"): ind = (obs > 233) & (obs < 313) & (ctr > 233) & (ctr < 313)
+        if (variable == "dewpoint"): ind = (obs > 230) & (obs < 305) & (ctr > 230) & (ctr < 305)
+        if (variable == "t_max"): ind = (obs > 238) & (obs < 315) & (ctr > 238) & (ctr < 315)
+        if (variable == "t_min"): ind = (obs > 228) & (obs < 308) & (ctr > 228) & (ctr < 308)
         obs = obs[ind]
         ctr = ctr[ind]
         
