@@ -15,7 +15,10 @@ import xgboost as xgb
 import time
 from sklearn.metrics import mean_squared_error
 import quantile_mapping as qm  
+from data_functions_1 import country_list
 from data_functions_1 import load_meps_training_data
+from data_functions_1 import remove_bad_stations
+from data_functions_1 import copy_tmax_tmin_to_prev_hours
 from data_functions_1 import order_by_time_and_leadtime
 from data_functions_1 import select_features
 from data_functions_1 import add_time_lagged_features
@@ -33,7 +36,7 @@ from data_functions_1 import calculate_point_forecasts
 options, remainder = getopt.getopt(sys.argv[1:],[],['variable=','first_year=','first_month=','last_year=','last_month=','model_name=','training_data_dir=','model_dir=','help'])
 for opt, arg in options:
     if opt == '--help':
-        print('xgb_train_all.py variable=windspeed, windgust, temperature or dewpoint, first_year=2021, first_month=4, last_year=2023, last_month=9, model_name=ws_xgb_model_20231211, training_data_dir=input data directory, model_dir=output data directory')
+        print('xgb_train_all.py variable=windspeed, windgust, temperature, dewpoint, t_max or t_min, first_year=2021, first_month=4, last_year=2023, last_month=9, model_name=ws_xgb_model_20231211, training_data_dir=input data directory, model_dir=output data directory')
         exit()
     elif opt == '--variable': variable = arg
     elif opt == '--first_year': first_year = int(arg)
@@ -44,12 +47,7 @@ for opt, arg in options:
     elif opt == '--training_data_dir': training_data_dir = arg
     elif opt == '--model_dir': model_dir = arg
 
-if (variable == "windspeed"):
-    country_list = ['DEU','DNK', 'EST', 'FIN', 'LTU', 'LVA', 'NLD', 'POL', 'SWE']
-elif (variable == "windgust"):
-    country_list = ['DEU','EST','FIN','LVA','NLD','SWE']
-elif ((variable == "temperature") | (variable == "dewpoint")):
-    country_list = ['DEU','DNK', 'EST', 'FIN', 'LTU', 'LVA', 'NLD', 'NOR', 'POL', 'SWE']
+country_list = country_list(variable)
     
 start = time.time()
 print(time.ctime())
@@ -61,11 +59,17 @@ print("Data loading and modifying starts...")
 #Load training data
 features, labels, stations_all, metadata_all = load_meps_training_data(first_year, first_month, last_year, last_month, countries = country_list, main_directory = training_data_dir)
 
+#Remove stations that have checked to have too little observations
+features, labels, stations_all = remove_bad_stations(features, labels, stations_all, variable)
+
+#Copy tmax and tmin observations to previous 11 hours
+labels, features, metadata_all = copy_tmax_tmin_to_prev_hours(labels, features, metadata_all)
+
 #Order by time and leadtime, and modify metadata, features and labels
 features, labels, metadata_ordered = order_by_time_and_leadtime(metadata_all, features, labels)
 
-#Select features that are used for our predicted variable
-features = select_features(features, variable)
+#Select only features that are used for our predicted variable
+features, features_list = select_features(features, variable)
 
 #Add lagged time features to features array
 features, lt_ehto = add_time_lagged_features(metadata_ordered, features, n_lags=2)
@@ -79,14 +83,14 @@ station_features = create_station_features(stations_all, features.shape[0])
 #Select observation variable from labels array
 observations = select_observation_variable(labels, lt_ehto, variable)
 
-#Select rows with good observations (no nans or stations that have too little observations)
-true_rows = rows_with_good_observations(observations, station_features, variable)
+#Select rows with good observations
+true_rows = rows_with_good_observations(observations, variable)
 all_observations = observations[true_rows]
 
 print("Observations range:", np.min(all_observations),np.max(all_observations))
 
 #Calculate point forecast and forecast error
-forecasts_point = calculate_point_forecasts(features, true_rows, variable)
+forecasts_point = calculate_point_forecasts(features, features_list, true_rows, variable)
 forecast_errors = forecasts_point - all_observations
 
 #Combine all features
@@ -117,7 +121,7 @@ if ((variable == "windspeed") | (variable == "windgust")):
             reg_alpha=0.714,
             objective='reg:squarederror')
 
-elif ((variable == "temperature") | (variable == "dewpoint")):
+elif ((variable == "temperature") | (variable == "dewpoint") | (variable == "t_max") | (variable == "t_min")):
     xgb_model = xgb.XGBRegressor(
             tree_method = "hist",
             n_estimators=830,
@@ -137,29 +141,27 @@ predict_xgb_trainval = forecasts_point - xgb_trainval
 
 if ((variable == "windspeed") | (variable == "windgust")):
     predict_xgb_trainval[predict_xgb_trainval < 0] = 0
-#elif (variable == "temperature"):
-#    predict_xgb_trainval[predict_xgb_trainval < 230] = 230
 
 xgb_qm, q_obs, q_ctr = qm.q_mapping(all_observations,predict_xgb_trainval,predict_xgb_trainval,variable)
 
 print("Model name:", model_name)
 print("Saving models to folder", model_dir, "\n")
 
-#Save model and qunatile arrays q_obs and q_ctr
+#Save model and quantile arrays q_obs and q_ctr
 xgb_model.save_model(model_dir + "xgb_" + model_name + ".json")
 np.savez(model_dir + "quantiles_" + model_name + ".npz", q_obs=q_obs, q_ctr=q_ctr)
-#plt.plot(q_obs,q_ctr)
 
 ###################
 # END OF TRAINING #
 ###################
 
-#XGB mallien korjaukset jakauma
+#XGB model correction distribution
 predict_xgb_qm = predict_xgb_trainval.copy()
 if ((variable == "windspeed") | (variable == "windgust")):
     predict_xgb_qm[predict_xgb_qm > 10] = qm.interp_extrap(x=predict_xgb_trainval[predict_xgb_qm > 10], xp=q_ctr, yp=q_obs)
-#elif (variable == "temperature"):
-    #predict_xgb_qm[predict_xgb_qm < 260] = qm.interp_extrap(x=predict_xgb_trainval[predict_xgb_qm < 260], xp=q_ctr, yp=q_obs)
+    predict_xgb_qm[predict_xgb_qm < 2] = qm.interp_extrap(x=predict_xgb_trainval[predict_xgb_qm < 2], xp=q_ctr, yp=q_obs)
+else:
+    predict_xgb_qm = qm.interp_extrap(x=predict_xgb_trainval, xp=q_ctr, yp=q_obs)
 xgb_qm_test = forecasts_point - predict_xgb_qm
 
 print("Largest corrections for train set with xgb model:")

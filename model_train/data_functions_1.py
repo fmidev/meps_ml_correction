@@ -194,7 +194,7 @@ def add_time_lagged_features(metadata_ordered, features, n_lags):
     return features_all_t, lt_ehto
 
 
-def create_time_features(metadata_ordered, n_stations, lt_ehto, leadtime = True):
+def create_time_features(metadata_ordered, n_stations, lt_ehto):
     """
     This function creates time features (month_sin, month_cos, hour_sin, hour_cos and leadtime) using time
     from metadata_ordered
@@ -209,7 +209,6 @@ def create_time_features(metadata_ordered, n_stations, lt_ehto, leadtime = True)
         'hour_sin': np.sin(datetime_object.dt.hour*2*math.pi/23),
         'hour_cos': np.cos(datetime_object.dt.hour*2*math.pi/23),
         'leadtime': np.array(metadata_ordered['leadtime'])})
-    if leadtime == False: features_time = features_time.drop(columns=['leadtime'])
     time_features = np.repeat(np.array(features_time, dtype=np.float32)[lt_ehto],n_stations,axis=0)
     return time_features
 

@@ -6,15 +6,15 @@
 echo "run_xgb_train.sh alkaa"
 date
 
-variable=$1 #"windspeed", "windgust", "temperature", "dewpoint"
+variable=$1 #"windspeed", "windgust", "temperature", "dewpoint", "t_max", "t_min"
 date_tag=$2
 first_year=2021
-first_month=4
-last_year=2023
+first_month=10
+last_year=2024
 last_month=9
 model_name=$variable"_"$date_tag
-training_data_dir='/data/statcal/projects/MEPS_WS_correction/trainingdata/'
-model_dir="/data/statcal/projects/MEPS_WS_correction/Models/"
+training_data_dir='/home/users/ylinenk/projects/MEPS_WS_correction/trainingdata/'
+model_dir="/home/users/ylinenk/projects/MEPS_WS_correction/Models/"
 
 echo "Variable:" $variable
 echo "Training period:" $first_month"/"$first_year"-"$last_month"/"$last_year
