@@ -54,6 +54,6 @@ RUN chmod 644 meps_lsm.grib && \
     chmod 644 quantiles_t_max_$TMAX_TAG.npz && \
     chmod 644 xgb_t_max_$TMAX_TAG.json && \
     chmod 644 quantiles_t_min_$TMIN_TAG.npz && \
-    chmod 644 xgb_t_min_$TMIN_TAG.json \
+    chmod 644 xgb_t_min_$TMIN_TAG.json && \
     update-alternatives --set python3 /usr/bin/python3.9 && \
     python3 -m pip --no-cache-dir install -r requirements.txt
