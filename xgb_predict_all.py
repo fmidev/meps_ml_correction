@@ -6,12 +6,10 @@ Created on Thu Dec 21 14:13:36 2023
 """
 
 import sys
-import numpy as np
 import copy
 import time
 import argparse
 from helper_functions import create_features_data
-from helper_functions import modify_features_for_xgb_model
 from helper_functions import ml_predict
 from helper_functions import read_grid
 from helper_functions import get_points
@@ -115,14 +113,18 @@ def main():
         diff_ws = interpolate(grid, points_ws, background0[0], ml_predictions_ws, args, lc)
         output_ws, _ = ml_corrected_forecasts(forecasttime, background_ws, diff_ws, "windspeed")
         #Set that output of wind gust cant be lower than output of wind speed
-        output[output < output_ws] = output_ws[output < output_ws]
+        for i in range(0, len(output)):
+            wg_lt_ws = output[i] < output_ws[i]
+            output[i][wg_lt_ws] = output_ws[i][wg_lt_ws]
     elif (args.parameter == "dewpoint"):
         _, _, _, background_ta, _, _, _, _, _ = read_grid(args, "temperature")
         points_ta = get_points(args, "temperature")
         diff_ta = interpolate(grid, points_ta, background0[0], ml_predictions_ta, args, lc)
         output_ta, _ = ml_corrected_forecasts(forecasttime, background_ta, diff_ta, "temperature")
         #Set that output of dewpoint cant be higher than output of temperature
-        output[output > output_ta] = output_ta[output > output_ta]
+        for i in range(0, len(output)):
+            td_gt_ta = output[i] > output_ta[i]
+            output[i][td_gt_ta] = output_ta[i][td_gt_ta]
     print("Interpolating forecasts takes:", round(time.time()-oit, 1), "seconds")
 
     #Write corrected forecasts to grib file
