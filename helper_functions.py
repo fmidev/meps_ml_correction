@@ -191,19 +191,23 @@ def read_grib(gribfile, read_coordinates=False):
             )
 
 
-def read_grid(args):
+def read_grid(args, variable):
     """Top function to read "all" gridded data"""
     # Define the grib-file used as background/"parameter_data"
-    if args.parameter == "temperature":
+    if variable == "temperature":
         lons, lats, vals, leadtime, analysistime, forecasttime = read_grib(args.t2_data, True)
-    elif args.parameter == "dewpoint":
+    elif variable == "dewpoint":
         lons, lats, vals, leadtime, analysistime, forecasttime = read_grib(args.td2_data, True)
-    elif args.parameter == "windspeed":
+    elif variable == "windspeed":
         lons, lats, vals_u, leadtime, analysistime, forecasttime = read_grib(args.u10_data, True)
         _, _, vals_v, _, _, _ = read_grib(args.v10_data, True)
         vals = np.sqrt(np.power(vals_u,2) + np.power(vals_v,2))
-    elif args.parameter == "windgust":
+    elif variable == "windgust":
         lons, lats, vals, leadtime, analysistime, forecasttime = read_grib(args.fg_data, True)
+    elif variable == "t_max":
+        lons, lats, vals, leadtime, analysistime, forecasttime = read_grib(args.tmax_data, True)
+    elif variable == "t_min":
+        lons, lats, vals, leadtime, analysistime, forecasttime = read_grib(args.tmin_data, True)
 
     _, _, topo, _, _, _ = read_grib(args.topography_data, False)
     _, _, lc, _, _, _ = read_grib(args.landseacover_data, False)
@@ -217,11 +221,14 @@ def read_grid(args):
     return grid, lons, lats, vals, leadtime, analysistime, forecasttime, lc, topo
 
 
-def create_features_data(args):
+def create_features_data(args, variable):
     '''Create features array which has dimensions for times, stations, variables, and 4 grids.
     In addition create metadata that contains (valid)time and leadtime.''' 
     #Station list and column nearest tells 4 closest grid points for each station
-    all_stations = pd.read_csv(args.station_list)
+    if (variable == "windspeed"): all_stations = pd.read_csv(args.station_list_ws)
+    if (variable == "windgust"): all_stations = pd.read_csv(args.station_list_wg)
+    if (variable == "temperature") | (variable == "t_max") | (variable == "t_min"): all_stations = pd.read_csv(args.station_list_ta)
+    if (variable == "dewpoint"): all_stations = pd.read_csv(args.station_list_td)
     nearest_column = all_stations.nearest
     nearest_array = np.array(nearest_column.str[1:-1].str.split(',',expand=True).astype(int))
 
@@ -231,13 +238,13 @@ def create_features_data(args):
     metadata = pd.DataFrame(data = {'leadtime': leadtime,'time': time})
     #Take four closest grid points and save them to features array
     point_values = data.reshape(len(data), -1)[:,nearest_array]
-    features = np.empty((len(data), len(all_stations), 20, 4))
+    features = np.empty((len(data), len(all_stations), 22, 4)) #third column length is number of parameters (Obs! fg is read outside the following loop)
     features[:,:,0,:] = point_values
     del data, leadtime, forecasttime
     i = 1
     for param_args in [args.lcc_data,args.mld_data,args.p_data,args.t2_data,args.t850_data,args.tke925_data,args.u10_data,
-                       args.u850_data,args.u65_data,args.v10_data,args.v850_data,args.v65_data,args.ugust_data,
-                       args.vgust_data,args.z500_data,args.z1000_data,args.z0_data,args.r2_data,args.t0_data]:
+                       args.u850_data,args.u65_data,args.v10_data,args.v850_data,args.v65_data,args.ugust_data,args.vgust_data,
+                       args.z500_data,args.z1000_data,args.z0_data,args.r2_data,args.t0_data,args.tmax_data,args.tmin_data]:
         _, _, data, _, _, _ = read_grib(param_args, False)
         #Take four closest grid points
         point_values = data.reshape(len(data), -1)[:,nearest_array]
@@ -248,19 +255,28 @@ def create_features_data(args):
     return features, metadata
 
 
-def modify_features_for_xgb_model(args, features, metadata):
+def modify_features_for_xgb_model(variable, args, features, metadata):
     '''Select features for given parameter, add station and time features, and add time lagged features'''
-    all_stations = pd.read_csv(args.station_list)
+    if (variable == "windspeed"): all_stations = pd.read_csv(args.station_list_ws)
+    if (variable == "windgust"): all_stations = pd.read_csv(args.station_list_wg)
+    if (variable == "temperature") | (variable == "t_max") | (variable == "t_min"): all_stations = pd.read_csv(args.station_list_ta)
+    if (variable == "dewpoint"): all_stations = pd.read_csv(args.station_list_td)
 
     #Interpolate features to station points using 4 closest grid values
     weights  = np.array(all_stations['weights'].str[1:-1].str.split(',',expand=True).astype(float))
     features = np.sum(np.multiply(features, weights[np.newaxis,:,np.newaxis,:]), axis=3)
     
+    all_features_list  = ["fg","lcc","mld","p","t2m","t850","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m", 
+                          "z500","z1000","z0m","rh2m","t0m","tmax","tmin"]
     #Select features for given parameter
-    if (args.parameter == "windspeed"): features = features[:,:,0:17]
-    if (args.parameter == "windgust"): features = features[:,:,0:17]
-    if (args.parameter == "temperature"): features = features[:,:,[0,1,2,3,4,5,6,8,11,15,16,18,19]]
-    if (args.parameter == "dewpoint"): features = features[:,:,[0,1,2,3,4,5,6,8,9,11,12,15,16,18,19]]
+    if (variable == "windspeed"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","z500","z1000"]
+    if (variable == "windgust"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","z500","z1000"]
+    if (variable == "temperature"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u850","v850","z500","z1000","rh2m","t0m","tmax","tmin"]
+    if (variable == "dewpoint"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u850","v850","z500","z1000","rh2m","t0m","tmax","tmin"]
+    if (variable == "t_max"): features_list = ["fg","lcc","mld","t2m","t850","u850","v850","z500","rh2m","t0m","tmax","tmin"]
+    if (variable == "t_min"): features_list = ["fg","lcc","mld","t2m","t850","u10m","v10m","z500","rh2m","t0m","tmax","tmin"]
+    ilocs = [all_features_list.index(feature) for feature in features_list]
+    features = features[:,:,ilocs]
 
     #Time lagged features, now 2 lags
     n_lags = 2
@@ -295,49 +311,198 @@ def modify_features_for_xgb_model(args, features, metadata):
     features2 = features_all_t.reshape(-1,features_all_t.shape[2])
     all_features = np.concatenate((features2, time_features, station_features),axis=1)
 
-    return all_features
+    return all_features, features_list
 
 
-def ml_predict(all_features, args):
-    '''Make xgb prediction and return predicted corrections in list where 
-    each element is for one lead time'''
-    #Load forecast field #Obs! Column number depends on selected features
-    if (args.parameter == "windspeed"):
-        forecast_point = np.sqrt(np.power(all_features[:,7],2) + np.power(all_features[:,10],2))
-    elif (args.parameter == "windgust"):
-        forecast_point = all_features[:,0]
-    elif (args.parameter == "temperature"):
-        forecast_point = all_features[:,4]
-    elif (args.parameter == "dewpoint"):
-        T = all_features[:,4]
-        RH = all_features[:,13] #RH is 0...1 (not in percents)
+def xgb_predict(all_features, args, features_list, variable):
+    '''Make xgb prediction and quantile mapping for given variable'''
+    #Load forecast field based on parameter name in features_list
+    if (variable == "windspeed"):
+        u10_iloc = features_list.index("u10m")
+        v10_iloc = features_list.index("v10m")
+        forecasts_point = np.sqrt(np.power(all_features[:,u10_iloc],2) + np.power(all_features[:,v10_iloc],2))
+    elif (variable == "windgust"):
+        fg_iloc = features_list.index("fg")
+        forecasts_point = all_features[:,fg_iloc]
+    elif (variable == "temperature"):
+        t2m_iloc = features_list.index("t2m")
+        forecasts_point = all_features[:,t2m_iloc]
+    elif (variable == "dewpoint"):
+        t2m_iloc = features_list.index("t2m")
+        rh2m_iloc = features_list.index("rh2m")
+        T = all_features[:,t2m_iloc]
+        RH = all_features[:,rh2m_iloc] #RH is 0...1 (not in percents)
         RH[RH == 0] = 0.001
         RH[RH>1] = 1
         L = 461.5
         Rw = 2.501*10**6
         forecasts_point = T/(1-(T*np.log(RH)*(L/Rw))) #Same formula than in himan calculation
-        
-    #Load model xgb model
+    elif (variable == "t_max"):
+        tmax_iloc = features_list.index("tmax")
+        forecasts_point = all_features[:,tmax_iloc]
+    elif (variable == "t_min"):
+        tmin_iloc = features_list.index("tmin")
+        forecasts_point = all_features[:,tmin_iloc]
+    
+    #Load xgb model
     xgb_model = xgb.XGBRegressor()
-    xgb_model.load_model(args.model)
+    if (variable == "windspeed"): xgb_model.load_model(args.model_ws)
+    if (variable == "windgust"): xgb_model.load_model(args.model_wg)
+    if (variable == "temperature"): xgb_model.load_model(args.model_ta)
+    if (variable == "dewpoint"): xgb_model.load_model(args.model_td)
+    if (variable == "t_max"): xgb_model.load_model(args.model_tmax)
+    if (variable == "t_min"): xgb_model.load_model(args.model_tmin)
 
-    #Predict
+    #Predict forecast correction and calculate forecast values for quantile mapping
     xgb_predict = xgb_model.predict(all_features)
+    xgb_forecast = forecasts_point - xgb_predict
 
-    #Do quantile correction for windspeed and windgust
-    if ((args.parameter == "windspeed") | (args.parameter == "windgust")):
-        quantiles = np.load(args.quantiles)
-        xgb_forecast = forecast_point - xgb_predict
+    #Load quantiles for quantile mapping
+    if (variable == "windspeed"): quantiles = np.load(args.quantiles_ws)
+    if (variable == "windgust"): quantiles = np.load(args.quantiles_wg)
+    if (variable == "temperature"): quantiles = np.load(args.quantiles_ta)
+    if (variable == "dewpoint"): quantiles = np.load(args.quantiles_td)
+    if (variable == "t_max"): quantiles = np.load(args.quantiles_tmax)
+    if (variable == "t_min"): quantiles = np.load(args.quantiles_tmin)
+    
+    #Do quantile correction for windspeed and windgust only for low and high wind speeds
+    if ((variable == "windspeed") | (variable == "windgust")):        
         xgb_forecast[xgb_forecast < 0] = 0
         xgb_forecast_qm = xgb_forecast.copy()
         xgb_forecast_qm[xgb_forecast_qm > 10] = qm.interp_extrap(x=xgb_forecast[xgb_forecast > 10], xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
         xgb_forecast_qm[xgb_forecast_qm < 2] = qm.interp_extrap(x=xgb_forecast[xgb_forecast < 2], xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
-
-        #Predictions back to forecast corrections
-        ml_correction = forecast_point - xgb_forecast_qm
     else:
-        ml_correction = xgb_predict
+        xgb_forecast_qm = qm.interp_extrap(x=xgb_forecast, xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
+    #Return both xgb_forecast_qm and forecasts_point
+    return xgb_forecast_qm, forecasts_point
+
+def select_indices(ahour):
+    '''Select indeces for tmin and tmax combining based on hour of analysis time.
+    Indeces tells when time is 7 UTC for indeces_max and 19 UTC for indeces_min.
+    Leadtimes for ml corrected meps are 2...66h'''
+    if (ahour == 0):
+        indices_max = [5, 29, 53]
+        indices_min = [17, 41]
+    elif (ahour == 3):
+        indices_max = [2, 26, 50]
+        indices_min = [14, 38]
+    elif (ahour == 6):
+        indices_max = [0, 23, 47]
+        indices_min = [11, 35]
+    elif (ahour == 9):
+        indices_max = [20, 44]
+        indices_min = [8, 32]
+    elif (ahour == 12):
+        indices_max = [17, 41]
+        indices_min = [5, 29, 53]
+    elif (ahour == 15):
+        indices_max = [14, 38]
+        indices_min = [2, 26, 50]
+    elif (ahour == 18):
+        indices_max = [11, 35]
+        indices_min = [0, 23, 47]
+    return indices_max, indices_min
+
+
+def ml_predict(args, features, metadata, variable):
+    '''Calculate ml_correction and return predicted corrections in list where 
+    each element is for one lead time'''
+    if (variable == "windspeed") | (variable == "windgust") | (variable == "dewpoint"):
+        #Create features for xgb model
+        all_features, features_list = modify_features_for_xgb_model(variable, args, features, metadata)
+        #Make xgb prediction
+        xgb_forecast_qm, forecasts_point = xgb_predict(all_features, args, features_list, variable)
+    elif variable == "temperature": #Make min/max combining for temperature forecasts
+        #Create features for xgb model
+        all_features, features_list = modify_features_for_xgb_model(variable, args, features, metadata)
+        all_features_tmax, features_list_tmax = modify_features_for_xgb_model("t_max", args, features, metadata)
+        all_features_tmin, features_list_tmin = modify_features_for_xgb_model("t_min", args, features, metadata)
         
+        #Make xgb prediction
+        xgb_forecast_qm_ta, forecasts_point = xgb_predict(all_features, args, features_list, variable)
+        xgb_forecast_qm_tmax, _ = xgb_predict(all_features_tmax, args, features_list_tmax, "t_max")
+        xgb_forecast_qm_tmin, _ = xgb_predict(all_features_tmin, args, features_list_tmin, "t_min")
+        
+        ##########################################
+        #Combine min/max forecasts to temperature#
+        ##########################################
+        xgb_forecast_qm_with_min_max = xgb_forecast_qm_ta.copy()
+        
+        #Set thresholds how much tmax and tmin can differ from t2m
+        threshold_tmax = 2
+        threshold_tmin_summer = 2
+        threshold_tmin_winter = 1
+        
+        #Chech number of stations
+        all_stations = pd.read_csv(args.station_list_ta)
+        stations_n = len(all_stations['WMON'])
+
+        #Check hour and month of analysis time and set tmin threshold and indeces based on them 
+        ahour = int(args.analysis_time[-2:])
+        amonth = int(args.analysis_time[4:6])
+        if (amonth >= 5) & (amonth <= 8): #Summer
+            threshold_tmin = threshold_tmin_summer
+        else: #Winter
+            threshold_tmin = threshold_tmin_winter
+        indices_max, indices_min = select_indices(ahour)
+
+        #Loop over all stations
+        for i in range(stations_n):
+            xgb_forecast_qm_station = xgb_forecast_qm_ta[i::stations_n].copy()
+            xgb_forecast_qm_tmax_station = xgb_forecast_qm_tmax[i::stations_n]
+            xgb_forecast_qm_tmin_station = xgb_forecast_qm_tmin[i::stations_n]
+            
+            #Loop separately over max and min temperatures
+            for j in indices_max:
+                if (ahour==6) & (j==0): 
+                    step = 11 #starts from 8 UTC since first leadtime is 2h 
+                else:
+                    step = 12 # 12h step
+                tmax_forecast = np.mean(xgb_forecast_qm_tmax_station[j:(j+step)])
+                temperature_max = np.max(xgb_forecast_qm_station[j:(j+step)])
+                max_indices = np.where(xgb_forecast_qm_station[j:(j+step)] == temperature_max)[0]
+                iloc_temperature_max = max_indices[len(max_indices)//2] #select the middle index if multiple times have max temperature
+                if (tmax_forecast > temperature_max):
+                    if ((tmax_forecast - temperature_max) > threshold_tmax):
+                        if (iloc_temperature_max == 0): #if temperature maximum is at 7 UTC, add only half of what the change would other wise be
+                            xgb_forecast_qm_station[j:(j+step)][iloc_temperature_max] += threshold_tmax/2
+                        else:
+                            xgb_forecast_qm_station[j:(j+step)][iloc_temperature_max] += threshold_tmax
+                    else:
+                        if (iloc_temperature_max == 0): #if temperature maximum is at 7 UTC, add only half of what the change would other wise be
+                            xgb_forecast_qm_station[j:(j+step)][iloc_temperature_max] = (tmax_forecast + temperature_max)/2
+                        else:
+                            xgb_forecast_qm_station[j:(j+step)][iloc_temperature_max] = tmax_forecast     
+            for j in indices_min:
+                if (ahour==18) & (j==0): 
+                    step = 11 # starts from 20 UTC since first leadtime is 2h 
+                else:
+                    step = 12 # 12h step
+                tmin_forecast = np.mean(xgb_forecast_qm_tmin_station[j:(j+step)])
+                temperature_min = np.min(xgb_forecast_qm_station[j:(j+step)])
+                min_indices = np.where(xgb_forecast_qm_station[j:(j+step)] == temperature_min)[0]
+                iloc_temperature_min = min_indices[len(min_indices)//2] #select the middle index if multiple times have min temperature    
+                if (tmin_forecast < temperature_min):
+                    if (tmin_forecast - temperature_min < (-threshold_tmin)):
+                        if (iloc_temperature_min == 0): #if temperature minimum is at 19 UTC, subtract only half of what the change would other wise be
+                            xgb_forecast_qm_station[j:(j+step)][iloc_temperature_min] -= threshold_tmin/2
+                        else:
+                            xgb_forecast_qm_station[j:(j+step)][iloc_temperature_min] -= threshold_tmin
+                    else:
+                        if (iloc_temperature_min == 0): #if temperature minimum is at 19 UTC, subtract only half of what the change would other wise be
+                            xgb_forecast_qm_station[j:(j+step)][iloc_temperature_min] = (tmin_forecast + temperature_min)/2
+                        else:
+                            xgb_forecast_qm_station[j:(j+step)][iloc_temperature_min] = tmin_forecast 
+            xgb_forecast_qm_with_min_max[i::stations_n] = xgb_forecast_qm_station
+            xgb_forecast_qm = xgb_forecast_qm_with_min_max
+    
+    #Predictions back to forecast corrections
+    ml_correction = forecasts_point - xgb_forecast_qm
+
+    #Set limit for ml_correction values that they can be only between -8...8
+    ml_correction[ml_correction > 8] = 8
+    ml_correction[ml_correction < -8] = -8  
+
     # Store data to list where each leadtime is own item (leadtimes: +2h..+66h)
     ml_results = []
     leadtimes = all_features[:,-7]
@@ -348,9 +513,12 @@ def ml_predict(all_features, args):
     return ml_results
 
 
-def get_points(args):
+def get_points(args, variable):
     '''Create point variable for gridpp interpolation'''
-    all_stations = pd.read_csv(args.station_list)
+    if (variable == "windspeed"): all_stations = pd.read_csv(args.station_list_ws)
+    if (variable == "windgust"): all_stations = pd.read_csv(args.station_list_wg)
+    if (variable == "temperature"): all_stations = pd.read_csv(args.station_list_ta)
+    if (variable == "dewpoint"): all_stations = pd.read_csv(args.station_list_td)
     
     points = gridpp.Points(
         all_stations['LAT'].to_numpy(),
@@ -481,7 +649,7 @@ def interpolate(grid, points, background, obs, args, lc):
     return output
 
 
-def ml_corrected_forecasts(args, forecasttime, background, diff):
+def ml_corrected_forecasts(forecasttime, background, diff, variable):
     '''calculate the final ml corrected forecast fields: MEPS - ml_correction
     and make rough qc to forecasts'''
     # Remove leadtimes 0 and 1, because due to lagged features, correction is not made to those
@@ -490,13 +658,13 @@ def ml_corrected_forecasts(args, forecasttime, background, diff):
     for j in range(0, len(diff)):
         tmp_output = background[j + n_lags] - diff[j]
         # Implement simple QC thresholds
-        if args.parameter == "windspeed":
+        if variable == "windspeed":
             tmp_output = np.clip(tmp_output, 0, 38)  # max ws same as in oper qc: 38m/s
-        elif args.parameter == "windgust":
+        elif variable == "windgust":
             tmp_output = np.clip(tmp_output, 0, 50)
-        elif args.parameter == "temperature":
+        elif variable == "temperature":
             tmp_output = np.clip(tmp_output, 218, 318)
-        elif args.parameter == "dewpoint":
+        elif variable == "dewpoint":
             tmp_output = np.clip(tmp_output, 208, 313)
         output.append(tmp_output)
 

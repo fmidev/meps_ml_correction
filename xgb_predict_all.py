@@ -5,6 +5,7 @@ Created on Thu Dec 21 14:13:36 2023
 @author: ylinenk
 """
 
+import sys
 import numpy as np
 import copy
 import time
@@ -44,9 +45,25 @@ def parse_command_line():
     parser.add_argument("--r2_data", action="store", type=str, required=True)
     parser.add_argument("--t0_data", action="store", type=str, required=True)
     parser.add_argument("--td2_data", action="store", type=str, required=True)
-    parser.add_argument("--model", action="store", type=str, required=True)
-    parser.add_argument("--quantiles", action="store", type=str, required=True)
-    parser.add_argument("--station_list", action="store", type=str, required=True)
+    parser.add_argument("--tmax_data", action="store", type=str, required=True)
+    parser.add_argument("--tmin_data", action="store", type=str, required=True)
+    parser.add_argument("--model_ws", action="store", type=str, required=True)
+    parser.add_argument("--quantiles_ws", action="store", type=str, required=True)
+    parser.add_argument("--model_wg", action="store", type=str, required=True)
+    parser.add_argument("--quantiles_wg", action="store", type=str, required=True)
+    parser.add_argument("--model_ta", action="store", type=str, required=True)
+    parser.add_argument("--quantiles_ta", action="store", type=str, required=True)
+    parser.add_argument("--model_td", action="store", type=str, required=True)
+    parser.add_argument("--quantiles_td", action="store", type=str, required=True)
+    parser.add_argument("--model_tmax", action="store", type=str, required=True)
+    parser.add_argument("--quantiles_tmax", action="store", type=str, required=True)
+    parser.add_argument("--model_tmin", action="store", type=str, required=True)
+    parser.add_argument("--quantiles_tmin", action="store", type=str, required=True)
+    parser.add_argument("--stations_list_ws", action="store", type=str, required=True)
+    parser.add_argument("--station_list_wg", action="store", type=str, required=True)
+    parser.add_argument("--station_list_ta", action="store", type=str, required=True)
+    parser.add_argument("--station_list_td", action="store", type=str, required=True)
+    parser.add_argument("--analysis_time", action="store", type=str, required=True)
     parser.add_argument("--producer_id", action="store", type=int, required=True)
     parser.add_argument("--output", action="store", type=str, required=True)
     parser.add_argument("--plot", action="store_true", default=False)
@@ -67,26 +84,48 @@ def main():
 
     #Read NWP data and create fetures array
     st = time.time()
-    features, metadata = create_features_data(args)
+    features, metadata = create_features_data(args, args.parameter)   
+    if (args.parameter == "windgust"): #For windgust, we need also features from wind speed
+        features_ws, _ = create_features_data(args, "windspeed")
+    elif (args.parameter == "dewpoint"): #For dewpoint, we need also features from temperature
+        features_ta, _ = create_features_data(args, "temperature")
     print("Reading NWP data for", args.parameter, "takes:", round(time.time()-st, 1), "seconds")
 
     #ML prediction
     mlt = time.time()
-    all_features = modify_features_for_xgb_model(args, features, metadata)
-    ml_predictions = ml_predict(all_features, args)
+    ml_predictions = ml_predict(args, features, metadata, args.parameter)
+    if (args.parameter == "windgust"):
+        ml_predictions_ws = ml_predict(args, features_ws, metadata, "windspeed")
+    elif (args.parameter == "dewpoint"):
+        ml_predictions_ta = ml_predict(args, features_ta, metadata, "temperature")
     print("Producing ML forecasts takes:", round(time.time()-mlt, 1), "seconds")
 
     #Gridding
     oit = time.time()
-    grid, lons, lats, background, leadtimes, analysistime, forecasttime, lc, topo = read_grid(args)
+    grid, lons, lats, background, leadtimes, analysistime, forecasttime, lc, topo = read_grid(args, args.parameter)
     background0 = copy.copy(background)
     background0[background0 != 0] = 0
-    points = get_points(args)
+    points = get_points(args, args.parameter)
     diff = interpolate(grid, points, background0[0], ml_predictions, args, lc)
+    output, forecasttime = ml_corrected_forecasts(forecasttime, background, diff, args.parameter)
+    #Make value check for wind gust and dewpoint
+    if (args.parameter == "windgust"):
+        _, _, _, background_ws, _, _, _, _, _ = read_grid(args, "windspeed")
+        points_ws = get_points(args, "windspeed")
+        diff_ws = interpolate(grid, points_ws, background0[0], ml_predictions_ws, args, lc)
+        output_ws, _ = ml_corrected_forecasts(forecasttime, background_ws, diff_ws, "windspeed")
+        #Set that output of wind gust cant be lower than output of wind speed
+        output[output < output_ws] = output_ws[output < output_ws]
+    elif (args.parameter == "dewpoint"):
+        _, _, _, background_ta, _, _, _, _, _ = read_grid(args, "temperature")
+        points_ta = get_points(args, "temperature")
+        diff_ta = interpolate(grid, points_ta, background0[0], ml_predictions_ta, args, lc)
+        output_ta, _ = ml_corrected_forecasts(forecasttime, background_ta, diff_ta, "temperature")
+        #Set that output of dewpoint cant be higher than output of temperature
+        output[output > output_ta] = output_ta[output > output_ta]
     print("Interpolating forecasts takes:", round(time.time()-oit, 1), "seconds")
 
     #Write corrected forecasts to grib file
-    output, forecasttime = ml_corrected_forecasts(args, forecasttime, background, diff)
     write_grib(args, analysistime, forecasttime, output)
 
     if args.plot:
