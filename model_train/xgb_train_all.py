@@ -13,8 +13,8 @@ import numpy as np
 import math
 import xgboost as xgb
 import time
-from sklearn.metrics import mean_squared_error
-import quantile_mapping as qm  
+import quantile_mapping as qm 
+from data_functions_1 import mean_squared_error
 from data_functions_1 import country_list
 from data_functions_1 import load_meps_training_data
 from data_functions_1 import remove_bad_stations

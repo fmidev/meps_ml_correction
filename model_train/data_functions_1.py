@@ -10,6 +10,9 @@ import numpy as np
 import pandas as pd
 import math
 
+def mean_squared_error(y_true, y_pred):
+    return np.mean((y_true - y_pred) ** 2)
+
 #Define country list based on variable
 def country_list(variable):
     if (variable == "windgust"):
