@@ -225,10 +225,10 @@ def create_features_data(args, variable):
     '''Create features array which has dimensions for times, stations, variables, and 4 grids.
     In addition create metadata that contains (valid)time and leadtime.''' 
     #Station list and column nearest tells 4 closest grid points for each station
-    if (variable == "windspeed"): all_stations = pd.read_csv(args.station_list_ws)
-    if (variable == "windgust"): all_stations = pd.read_csv(args.station_list_wg)
-    if (variable == "temperature") | (variable == "t_max") | (variable == "t_min"): all_stations = pd.read_csv(args.station_list_ta)
-    if (variable == "dewpoint"): all_stations = pd.read_csv(args.station_list_td)
+    if (variable == "windspeed"): all_stations = pd.read_csv(args.stations_list_ws)
+    if (variable == "windgust"): all_stations = pd.read_csv(args.stations_list_wg)
+    if (variable == "temperature") | (variable == "t_max") | (variable == "t_min"): all_stations = pd.read_csv(args.stations_list_ta)
+    if (variable == "dewpoint"): all_stations = pd.read_csv(args.stations_list_td)
     nearest_column = all_stations.nearest
     nearest_array = np.array(nearest_column.str[1:-1].str.split(',',expand=True).astype(int))
 
@@ -257,10 +257,10 @@ def create_features_data(args, variable):
 
 def modify_features_for_xgb_model(variable, args, features, metadata):
     '''Select features for given parameter, add station and time features, and add time lagged features'''
-    if (variable == "windspeed"): all_stations = pd.read_csv(args.station_list_ws)
-    if (variable == "windgust"): all_stations = pd.read_csv(args.station_list_wg)
-    if (variable == "temperature") | (variable == "t_max") | (variable == "t_min"): all_stations = pd.read_csv(args.station_list_ta)
-    if (variable == "dewpoint"): all_stations = pd.read_csv(args.station_list_td)
+    if (variable == "windspeed"): all_stations = pd.read_csv(args.stations_list_ws)
+    if (variable == "windgust"): all_stations = pd.read_csv(args.stations_list_wg)
+    if (variable == "temperature") | (variable == "t_max") | (variable == "t_min"): all_stations = pd.read_csv(args.stations_list_ta)
+    if (variable == "dewpoint"): all_stations = pd.read_csv(args.stations_list_td)
 
     #Interpolate features to station points using 4 closest grid values
     weights  = np.array(all_stations['weights'].str[1:-1].str.split(',',expand=True).astype(float))
@@ -434,7 +434,7 @@ def ml_predict(args, features, metadata, variable):
         threshold_tmin_winter = 1
         
         #Chech number of stations
-        all_stations = pd.read_csv(args.station_list_ta)
+        all_stations = pd.read_csv(args.stations_list_ta)
         stations_n = len(all_stations['WMON'])
 
         #Check hour and month of analysis time and set tmin threshold and indeces based on them 
@@ -515,10 +515,10 @@ def ml_predict(args, features, metadata, variable):
 
 def get_points(args, variable):
     '''Create point variable for gridpp interpolation'''
-    if (variable == "windspeed"): all_stations = pd.read_csv(args.station_list_ws)
-    if (variable == "windgust"): all_stations = pd.read_csv(args.station_list_wg)
-    if (variable == "temperature"): all_stations = pd.read_csv(args.station_list_ta)
-    if (variable == "dewpoint"): all_stations = pd.read_csv(args.station_list_td)
+    if (variable == "windspeed"): all_stations = pd.read_csv(args.stations_list_ws)
+    if (variable == "windgust"): all_stations = pd.read_csv(args.stations_list_wg)
+    if (variable == "temperature"): all_stations = pd.read_csv(args.stations_list_ta)
+    if (variable == "dewpoint"): all_stations = pd.read_csv(args.stations_list_td)
     
     points = gridpp.Points(
         all_stations['LAT'].to_numpy(),
