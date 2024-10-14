@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run predict script for the meps ml correction forecast 
 #source ../../bin/activate
-#E.g. ./run_xgb_predict.sh 2024012406 "windspeed" "path/to/file.grib2" > log/log_run_xgb_predict 
+#E.g. ./run_xgb_predict.sh 2024012406 "windspeed" "path/to/file.grib2" 215 > log/log_run_xgb_predict 
 
 PYTHON=python3
 ANALYSIS_TIME=$1 #YYYYMMDDHH
