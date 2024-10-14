@@ -11,8 +11,8 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.
 
 WORKDIR /meps_ml_correction
 
-ENV WS_TAG=20231214
-ENV WG_TAG=20240304
+ENV WS_TAG=20241011
+ENV WG_TAG=20241011
 ENV TA_TAG=20241009
 ENV TD_TAG=20241009
 ENV TMAX_TAG=20241009
