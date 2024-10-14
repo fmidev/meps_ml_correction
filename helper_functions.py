@@ -452,49 +452,57 @@ def ml_predict(args, features, metadata, variable):
             xgb_forecast_qm_tmax_station = xgb_forecast_qm_tmax[i::stations_n]
             xgb_forecast_qm_tmin_station = xgb_forecast_qm_tmin[i::stations_n]
             
-            #Loop separately over max and min temperatures
+            #Loop separately over day (indices_max) and night (indices_min) times
             for j in indices_max:
                 if (ahour==6) & (j==0): 
-                    step = 11 #starts from 8 UTC since first leadtime is 2h 
+                    step = 11 #When analysis hour is 6 UTC, first forecast time is 8 UTC (first leadtime is 2h), so we take only 11 steps to get times for 8-18 UTC
                 else:
-                    step = 12 # 12h step
+                    step = 12 #12h step
+                #Select all leadtimes for one day (7-18 UTC). Calculate tmax forecast, maximum of temperature forecasts and location of maximum temperature 
                 tmax_forecast = np.mean(xgb_forecast_qm_tmax_station[j:(j+step)])
                 temperature_max = np.max(xgb_forecast_qm_station[j:(j+step)])
                 max_indices = np.where(xgb_forecast_qm_station[j:(j+step)] == temperature_max)[0]
                 iloc_temperature_max = max_indices[len(max_indices)//2] #select the middle index if multiple times have max temperature
+                #If tmax forecast is higher than maximum temperature, set tmax forecast as new maximum temperature
+                #Set a limit, that a new maximum temperature can be only amount of threshold higher than maximum temperature
+                #Also if temperature is at its highest at 7 UTC (iloc==0), add only half of what the change would other wise be
                 if (tmax_forecast > temperature_max):
                     if ((tmax_forecast - temperature_max) > threshold_tmax):
-                        if (iloc_temperature_max == 0): #if temperature maximum is at 7 UTC, add only half of what the change would other wise be
+                        if (iloc_temperature_max == 0):
                             xgb_forecast_qm_station[j:(j+step)][iloc_temperature_max] += threshold_tmax/2
                         else:
                             xgb_forecast_qm_station[j:(j+step)][iloc_temperature_max] += threshold_tmax
                     else:
-                        if (iloc_temperature_max == 0): #if temperature maximum is at 7 UTC, add only half of what the change would other wise be
+                        if (iloc_temperature_max == 0):
                             xgb_forecast_qm_station[j:(j+step)][iloc_temperature_max] = (tmax_forecast + temperature_max)/2
                         else:
                             xgb_forecast_qm_station[j:(j+step)][iloc_temperature_max] = tmax_forecast     
             for j in indices_min:
                 if (ahour==18) & (j==0): 
-                    step = 11 # starts from 20 UTC since first leadtime is 2h 
+                    step = 11 #When analysis hour is 18 UTC, first forecast time is 20 UTC (first leadtime is 2h), so we take only 11 steps to get times for 20-6 UTC
                 else:
-                    step = 12 # 12h step
+                    step = 12 #12h step
+                #Select all leadtimes for one night (19-6 UTC). Calculate tmin forecast, minimum of temperature forecasts and location of minimum temperature 
                 tmin_forecast = np.mean(xgb_forecast_qm_tmin_station[j:(j+step)])
                 temperature_min = np.min(xgb_forecast_qm_station[j:(j+step)])
                 min_indices = np.where(xgb_forecast_qm_station[j:(j+step)] == temperature_min)[0]
-                iloc_temperature_min = min_indices[len(min_indices)//2] #select the middle index if multiple times have min temperature    
+                iloc_temperature_min = min_indices[len(min_indices)//2] #select the middle index if multiple times have min temperature
+                #If tmin forecast is lower than minimum temperature, set tmin forecast as new minimum temperature
+                #Set a limit, that a new minimum temperature can be only amount of threshold lower than minimum temperature
+                #Also if temperature is at its lowest at 19 UTC (iloc==0), subtract only half of what the change would other wise be
                 if (tmin_forecast < temperature_min):
                     if (tmin_forecast - temperature_min < (-threshold_tmin)):
-                        if (iloc_temperature_min == 0): #if temperature minimum is at 19 UTC, subtract only half of what the change would other wise be
+                        if (iloc_temperature_min == 0):
                             xgb_forecast_qm_station[j:(j+step)][iloc_temperature_min] -= threshold_tmin/2
                         else:
                             xgb_forecast_qm_station[j:(j+step)][iloc_temperature_min] -= threshold_tmin
                     else:
-                        if (iloc_temperature_min == 0): #if temperature minimum is at 19 UTC, subtract only half of what the change would other wise be
+                        if (iloc_temperature_min == 0):
                             xgb_forecast_qm_station[j:(j+step)][iloc_temperature_min] = (tmin_forecast + temperature_min)/2
                         else:
                             xgb_forecast_qm_station[j:(j+step)][iloc_temperature_min] = tmin_forecast 
             xgb_forecast_qm_with_min_max[i::stations_n] = xgb_forecast_qm_station
-            xgb_forecast_qm = xgb_forecast_qm_with_min_max
+        xgb_forecast_qm = xgb_forecast_qm_with_min_max
     
     #Predictions back to forecast corrections
     ml_correction = forecasts_point - xgb_forecast_qm
