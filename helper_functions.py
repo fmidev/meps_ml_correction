@@ -269,8 +269,8 @@ def modify_features_for_xgb_model(variable, args, features, metadata):
     all_features_list  = ["fg","lcc","mld","p","t2m","t850","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m", 
                           "z500","z1000","z0m","rh2m","t0m","tmax","tmin"]
     #Select features for given parameter
-    if (variable == "windspeed"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","z500","z1000"]
-    if (variable == "windgust"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","z500","z1000"]
+    if (variable == "windspeed"): features_list = ["fg","lcc","mld","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","rh2m","t0m"]
+    if (variable == "windgust"): features_list = ["fg","lcc","mld","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","rh2m","t0m"]
     if (variable == "temperature"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u850","v850","z500","z1000","rh2m","t0m","tmax","tmin"]
     if (variable == "dewpoint"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u850","v850","z500","z1000","rh2m","t0m","tmax","tmin"]
     if (variable == "t_max"): features_list = ["fg","lcc","mld","t2m","t850","u850","v850","z500","rh2m","t0m","tmax","tmin"]
