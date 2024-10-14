@@ -8,7 +8,8 @@ ANALYSIS_TIME=$1 #YYYYMMDDHH
 PARAMETER=$2 #"windspeed", "windgust", "temperature", "dewpoint"
 OUTPUT_FILE=$3
 
-PRODUCER_ID=215 #215 for preop, 214 for oper
+#215 for preop, 214 for oper
+PRODUCER_ID=$4 
 
 echo "ANALYSIS_TIME:" $ANALYSIS_TIME
 echo "PARAMETER:" $PARAMETER
