@@ -108,19 +108,19 @@ def main():
     output, forecasttime = ml_corrected_forecasts(forecasttime, background, diff, args.parameter)
     #Make value check for wind gust and dewpoint
     if (args.parameter == "windgust"):
-        _, _, _, background_ws, _, _, _, _, _ = read_grid(args, "windspeed")
+        _, _, _, background_ws, _, _, forecasttime, _, _ = read_grid(args, "windspeed")
         points_ws = get_points(args, "windspeed")
         diff_ws = interpolate(grid, points_ws, background0[0], ml_predictions_ws, args, lc)
-        output_ws, _ = ml_corrected_forecasts(forecasttime, background_ws, diff_ws, "windspeed")
+        output_ws, forecasttime = ml_corrected_forecasts(forecasttime, background_ws, diff_ws, "windspeed")
         #Set that output of wind gust cant be lower than output of wind speed
         for i in range(0, len(output)):
             wg_lt_ws = output[i] < output_ws[i]
             output[i][wg_lt_ws] = output_ws[i][wg_lt_ws]
     elif (args.parameter == "dewpoint"):
-        _, _, _, background_ta, _, _, _, _, _ = read_grid(args, "temperature")
+        _, _, _, background_ta, _, _, forecasttime, _, _ = read_grid(args, "temperature")
         points_ta = get_points(args, "temperature")
         diff_ta = interpolate(grid, points_ta, background0[0], ml_predictions_ta, args, lc)
-        output_ta, _ = ml_corrected_forecasts(forecasttime, background_ta, diff_ta, "temperature")
+        output_ta, forecasttime = ml_corrected_forecasts(forecasttime, background_ta, diff_ta, "temperature")
         #Set that output of dewpoint cant be higher than output of temperature
         for i in range(0, len(output)):
             td_gt_ta = output[i] > output_ta[i]
