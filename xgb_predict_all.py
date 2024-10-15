@@ -115,7 +115,7 @@ def main():
         #Set that output of wind gust cant be lower than output of wind speed
         for i in range(0, len(output)):
             wg_lt_ws = output[i] < output_ws[i]
-            output[i][wg_lt_ws] = output_ws[i][wg_lt_ws]
+            output[i][wg_lt_ws] = output_ws[i][wg_lt_ws] + 0.0001
     elif (args.parameter == "dewpoint"):
         _, _, _, background_ta, _, _, forecasttime, _, _ = read_grid(args, "temperature")
         points_ta = get_points(args, "temperature")
@@ -124,7 +124,7 @@ def main():
         #Set that output of dewpoint cant be higher than output of temperature
         for i in range(0, len(output)):
             td_gt_ta = output[i] > output_ta[i]
-            output[i][td_gt_ta] = output_ta[i][td_gt_ta]
+            output[i][td_gt_ta] = output_ta[i][td_gt_ta] - 0.0001
     print("Interpolating forecasts takes:", round(time.time()-oit, 1), "seconds")
 
     #Write corrected forecasts to grib file
