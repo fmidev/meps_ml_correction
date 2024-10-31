@@ -401,6 +401,9 @@ def select_indices(ahour):
     elif (ahour == 18):
         indices_max = [11, 35]
         indices_min = [0, 23, 47]
+    elif (ahour == 21):
+        indices_max = [8, 32]
+        indices_min = [20, 44]
     return indices_max, indices_min
 
 
