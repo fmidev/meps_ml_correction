@@ -131,6 +131,14 @@ elif ((variable == "temperature") | (variable == "dewpoint") | (variable == "t_m
             colsample_bytree=0.726,
             reg_alpha=0.606,
             objective='reg:squarederror')
+    
+# Filter to show only those explicitly set
+used_params = {k: v for k, v in xgb_model.get_params().items() if k in [
+    "tree_method", "n_estimators", "learning_rate", "max_depth", 
+    "subsample", "colsample_bytree", "reg_alpha", "objective"
+]}
+print("XGB model parameters:")
+print(used_params)
 
 start = time.time()
 xgb_model.fit(x_trainval, y_trainval)
