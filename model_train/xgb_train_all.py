@@ -70,6 +70,7 @@ features, labels, metadata_ordered = order_by_time_and_leadtime(metadata_all, fe
 
 #Select only features that are used for our predicted variable
 features, features_list = select_features(features, variable)
+print("Features:", features_list)
 
 #Add lagged time features to features array
 features, lt_ehto = add_time_lagged_features(metadata_ordered, features, n_lags=2)
