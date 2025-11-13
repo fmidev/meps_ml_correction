@@ -1,6 +1,6 @@
 argparse==1.1
 cartopy==0.22.0
-eccodes
+eccodes==2.40.1
 fsspec==2023.12.2
 gridpp==0.6.0
 numpy==1.26.2
