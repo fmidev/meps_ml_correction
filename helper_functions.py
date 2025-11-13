@@ -431,22 +431,22 @@ def ml_predict(args, features, metadata, variable):
         ##########################################
         xgb_forecast_qm_with_min_max = xgb_forecast_qm_ta.copy()
         
-        #Set thresholds how much tmax and tmin can differ from t2m
-        threshold_tmax = 2
-        threshold_tmin_summer = 2
-        threshold_tmin_winter = 1
-        
         #Chech number of stations
         all_stations = pd.read_csv(args.stations_list_ta)
         stations_n = len(all_stations['WMON'])
 
-        #Check hour and month of analysis time and set tmin threshold and indeces based on them 
-        ahour = int(args.analysis_time[-2:])
+        #Set thresholds how much tmax and tmin can differ from t2m
+        threshold_tmax = 2.5 
+        threshold_tmin = 2 
+
+        #Check month of analysis time and set thresholds for winter time
         amonth = int(args.analysis_time[4:6])
-        if (amonth >= 5) & (amonth <= 8): #Summer
-            threshold_tmin = threshold_tmin_summer
-        else: #Winter
-            threshold_tmin = threshold_tmin_winter
+        if (amonth >= 10) | (amonth <= 2): #Months Oct...Feb
+            threshold_tmin = 1
+            threshold_tmax = 2
+
+        #Check hour of analysis time and select indices based on them 
+        ahour = int(args.analysis_time[-2:])
         indices_max, indices_min = select_indices(ahour)
 
         #Loop over all stations
@@ -510,9 +510,9 @@ def ml_predict(args, features, metadata, variable):
     #Predictions back to forecast corrections
     ml_correction = forecasts_point - xgb_forecast_qm
 
-    #Set limit for ml_correction values that they can be only between -8...8
+    #Set limit for ml_correction values that they can be only between -10...8
     ml_correction[ml_correction > 8] = 8
-    ml_correction[ml_correction < -8] = -8  
+    ml_correction[ml_correction < -10] = -10  
 
     # Store data to list where each leadtime is own item (leadtimes: +2h..+66h)
     ml_results = []
