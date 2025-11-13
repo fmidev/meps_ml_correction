@@ -11,12 +11,12 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.
 
 WORKDIR /meps_ml_correction
 
-ENV WS_TAG=20241011
-ENV WG_TAG=20241011
-ENV TA_TAG=20241009
-ENV TD_TAG=20241009
-ENV TMAX_TAG=20241009
-ENV TMIN_TAG=20241009
+ENV WS_TAG=20251111
+ENV WG_TAG=20251111
+ENV TA_TAG=20251111
+ENV TD_TAG=20251111
+ENV TMAX_TAG=20251111
+ENV TMIN_TAG=20251111
 
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_lsm.grib /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_topography.grib /meps_ml_correction
