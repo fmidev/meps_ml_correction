@@ -102,7 +102,7 @@ def remove_bad_stations(features, labels, stations_all, variable):
     if (variable == "windspeed"): removable_stations = [10004, 10007, 10067, 6021, 6044, 6063, 6147, 2860, 2935, 26425, 12001, 2496]
     if (variable == "windgust"): removable_stations = [10004,10007,10033,10037,10038,10067,10124,10126,10136,10172,10246,10304,26425,2044,2226,2267,2286,2293,2366,2418,2432,2435,2460,2464,2496,2526,2550,2561,2607,2636,2670]
     if (variable == "temperature") | (variable == "dewpoint") | (variable == "t_max") | (variable == "t_min"): 
-        removable_stations = [10004, 10007, 10067, 6021, 6029, 6044, 6063, 6147, 26425, 26501, 6285, 1018, 1036, 1047, 1360, 1368, 12001, 2417, 2496]
+        removable_stations = [10004, 10007, 10067, 6021, 6029, 6033, 6044, 6063, 6147, 26425, 26501, 6285, 1018, 1036, 1047, 1360, 1368, 12001, 2417, 2496]
     stations_true = ~stations_all['WMON'].isin(removable_stations)
     features_new = features[:,stations_true,:]
     labels_new = labels[:,stations_true,:]
