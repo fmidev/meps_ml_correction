@@ -43,7 +43,11 @@ MODEL_TMIN="xgb_t_min_"$TMIN_TAG".json"
 QUANTILES_TMIN="quantiles_t_min_"$TMIN_TAG".npz"
    
 # Data from S3
-bucket="s3://routines-data/meps-ml-correction/preop/"$ANALYSIS_TIME"00/"
+if $PRODUCER_ID -eq 214; then
+    bucket="s3://routines-data/meps-ml-correction/prod/"$ANALYSIS_TIME"00/"
+else
+    bucket="s3://routines-data/meps-ml-correction/preop/"$ANALYSIS_TIME"00/"
+fi
 FG=$bucket"FFG-MS_10.grib2"
 LCC=$bucket"NL-0TO1_0.grib2"
 MLD=$bucket"MIXHGT-M_0.grib2"
