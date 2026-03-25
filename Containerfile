@@ -18,24 +18,26 @@ ENV TD_TAG=20251111
 ENV TMAX_TAG=20251111
 ENV TMIN_TAG=20251111
 
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_lsm.grib /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_topography.grib /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windspeed.csv /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windgust.csv /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_temperature.csv /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_dewpoint.csv /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windspeed_$WS_TAG.json /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windgust_$WG_TAG.json /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_temperature_$TA_TAG.json /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_dewpoint_$TD_TAG.json /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_t_max_$TMAX_TAG.json /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_t_min_$TMIN_TAG.json /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_windspeed_$WS_TAG.npz /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_windgust_$WG_TAG.npz /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_temperature_$TA_TAG.npz /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_dewpoint_$TD_TAG.npz /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_t_max_$TMAX_TAG.npz /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/quantiles_t_min_$TMIN_TAG.npz /meps_ml_correction
+ARG S3_HOST=https://lake.fmi.fi
+
+ADD ${S3_HOST}/ml-models/meps-ml-correction/meps_lsm.grib /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/meps_topography.grib /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_windspeed.csv /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_windgust.csv /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_temperature.csv /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_dewpoint.csv /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/xgb_windspeed_$WS_TAG.json /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/xgb_windgust_$WG_TAG.json /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/xgb_temperature_$TA_TAG.json /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/xgb_dewpoint_$TD_TAG.json /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/xgb_t_max_$TMAX_TAG.json /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/xgb_t_min_$TMIN_TAG.json /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/quantiles_windspeed_$WS_TAG.npz /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/quantiles_windgust_$WG_TAG.npz /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/quantiles_temperature_$TA_TAG.npz /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/quantiles_dewpoint_$TD_TAG.npz /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/quantiles_t_max_$TMAX_TAG.npz /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/quantiles_t_min_$TMIN_TAG.npz /meps_ml_correction
 
 RUN chmod 644 meps_lsm.grib && \
     chmod 644 meps_topography.grib && \
