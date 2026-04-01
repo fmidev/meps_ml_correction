@@ -3,3 +3,5 @@ log/
 figures/
 *~
 *#'
+tools/fetch_training_data_no_obs_FIN_new.py
+tools/retrieve_observations_FIN_new.py
