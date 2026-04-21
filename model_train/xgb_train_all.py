@@ -7,11 +7,12 @@ Created on Wed Nov 29 15:21:16 2023
 #Features from 4 grids are interpolated to station location
 
 import os,sys,getopt
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1" #use GPU 0, -1 would disable GPU usage entirely
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 import numpy as np
 import math
 import xgboost as xgb
+import json
 import time
 import quantile_mapping as qm 
 from data_functions_1 import mean_squared_error
@@ -28,6 +29,15 @@ from data_functions_1 import select_observation_variable
 from data_functions_1 import rows_with_good_observations
 from data_functions_1 import combine_all_features
 from data_functions_1 import calculate_point_forecasts
+from data_functions_4 import load_meps_training_data_4
+from data_functions_4 import remove_bad_stations_4
+from data_functions_4 import order_by_time_and_leadtime_4
+from data_functions_4 import select_features_4
+from data_functions_4 import add_t_inv_features_4
+from data_functions_4 import add_error_features_4
+from data_functions_4 import add_time_lagged_features_4
+from data_functions_4 import combine_all_features_4
+from data_functions_4 import calculate_point_forecasts_4
 
 ###############################################
 # LOAD AND MODIFY TRAINING DATA FOR XGB MODEL #
@@ -57,23 +67,23 @@ print("Training period: " + str(first_month) + "/" + str(first_year) + "-" + str
 print("Data loading and modifying starts...")
 
 #Load training data
-features, labels, stations_all, metadata_all = load_meps_training_data(first_year, first_month, last_year, last_month, countries = country_list, main_directory = training_data_dir)
+features, labels, stations_all, metadata_all = load_meps_training_data_4(first_year, first_month, last_year, last_month, countries = country_list, main_directory = training_data_dir)
 
 #Remove stations that have checked to have too little observations
-features, labels, stations_all = remove_bad_stations(features, labels, stations_all, variable)
+features, labels, stations_all = remove_bad_stations_4(features, labels, stations_all, variable)
 
 #Copy tmax and tmin observations to previous 11 hours
 labels, features, metadata_all = copy_tmax_tmin_to_prev_hours(labels, features, metadata_all)
 
-#Order by time and leadtime, and modify metadata, features and labels
-features, labels, metadata_ordered = order_by_time_and_leadtime(metadata_all, features, labels)
-
 #Select only features that are used for our predicted variable
-features, features_list = select_features(features, variable)
+features, features_list = select_features_4(features, variable)
 print("Features:", features_list)
 
+#Order by time and leadtime, and modify metadata, features and labels
+features, labels, metadata_ordered = order_by_time_and_leadtime_4(metadata_all, features, labels)
+
 #Add lagged time features to features array
-features, lt_ehto = add_time_lagged_features(metadata_ordered, features, n_lags=2)
+features, lt_ehto = add_time_lagged_features_4(metadata_ordered, features, features_list, n_lags=2)
 
 #Create new time features
 time_features = create_time_features(metadata_ordered, features.shape[1], lt_ehto)
@@ -91,11 +101,11 @@ all_observations = observations[true_rows]
 print("Observations range:", np.min(all_observations),np.max(all_observations))
 
 #Calculate point forecast and forecast error
-forecasts_point = calculate_point_forecasts(features, features_list, true_rows, variable)
+forecasts_point = calculate_point_forecasts_4(features, features_list, stations_all, true_rows, variable)
 forecast_errors = forecasts_point - all_observations
 
 #Combine all features
-all_features = combine_all_features(features, time_features, station_features, true_rows)
+all_features = combine_all_features_4(features, time_features, station_features, true_rows)
 
 print("Data modifing time:",str(math.floor((time.time() - start)/60)) + " minutes and " + str(round((time.time() - start) - math.floor((time.time() - start)/60)*60,1)) + " seconds")
 
@@ -112,26 +122,25 @@ print("x_train array size for xgb model:", x_trainval.shape, "\n")
 print("XGB training starts...")
 
 if ((variable == "windspeed") | (variable == "windgust")):
-    xgb_model = xgb.XGBRegressor(
-            tree_method = "hist",
-            n_estimators=504,
-            learning_rate=0.0117,
-            max_depth=10,
-            subsample=0.693,
-            colsample_bytree=0.504,
-            reg_alpha=0.714,
-            objective='reg:squarederror')
-
+    objective = 'reg:squarederror' #'reg:absoluteerror'
+    eval_metric = 'rmse' #'mae'
+    best_params_path = f"{model_dir}best_params/best_xgb_params_windspeed_default.json"
 elif ((variable == "temperature") | (variable == "dewpoint") | (variable == "t_max") | (variable == "t_min")):
-    xgb_model = xgb.XGBRegressor(
-            tree_method = "hist",
-            n_estimators=830,
-            learning_rate=0.0417,
-            max_depth=10,
-            subsample=0.845,
-            colsample_bytree=0.726,
-            reg_alpha=0.606,
-            objective='reg:squarederror')
+    objective = 'reg:squarederror'
+    eval_metric = 'rmse'
+    best_params_path = f"{model_dir}best_params/best_xgb_params_temperature_default.json"
+
+with open(best_params_path, "r") as f:
+    best_params = json.load(f)
+
+xgb_model = xgb.XGBRegressor(
+    objective=objective,
+    eval_metric=eval_metric,
+    **best_params,
+    tree_method="hist",  # Use GPU for training
+    #device="cuda",
+    n_jobs=10  # Default is all available CPU cores
+)
     
 # Filter to show only those explicitly set
 used_params = {k: v for k, v in xgb_model.get_params().items() if k in [
@@ -154,11 +163,11 @@ if ((variable == "windspeed") | (variable == "windgust")):
 xgb_qm, q_obs, q_ctr = qm.q_mapping(all_observations,predict_xgb_trainval,predict_xgb_trainval,variable)
 
 print("Model name:", model_name)
-print("Saving models to folder", model_dir, "\n")
+print("Saving models to folder " + model_dir + "final_models/\n")
 
 #Save model and quantile arrays q_obs and q_ctr
-xgb_model.save_model(model_dir + "xgb_" + model_name + ".json")
-np.savez(model_dir + "quantiles_" + model_name + ".npz", q_obs=q_obs, q_ctr=q_ctr)
+xgb_model.save_model(model_dir + "final_models/xgb_" + model_name + ".json")
+np.savez(model_dir + "final_models/quantiles_" + model_name + ".npz", q_obs=q_obs, q_ctr=q_ctr)
 
 ###################
 # END OF TRAINING #
@@ -178,9 +187,9 @@ print(np.sort(xgb_trainval))
 print("Largest corrections for train set with xgb_qm model:")
 print(np.sort(xgb_qm_test))
 
-print("\nMEPS mse:", round(mean_squared_error(all_observations, forecasts_point),3))
-print("XGB mse:", round(mean_squared_error(all_observations, predict_xgb_trainval),3))
-print("XGB_qm mse:", round(mean_squared_error(all_observations, predict_xgb_qm),3))
+print("\nMEPS mse and mae:", round(mean_squared_error(all_observations, forecasts_point),3), round(np.mean(np.abs(all_observations - forecasts_point)),3))
+print("XGB mse and mae:", round(mean_squared_error(all_observations, predict_xgb_trainval),3), round(np.mean(np.abs(all_observations - predict_xgb_trainval)),3))
+print("XGB_qm mse and mae:", round(mean_squared_error(all_observations, predict_xgb_qm),3), round(np.mean(np.abs(all_observations - predict_xgb_qm)),3))
 
 print(time.ctime())
 print("END")
