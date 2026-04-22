@@ -23,10 +23,10 @@ echo "XGB model run STARTS"
 
 if [ "$forecast_errors" = true ]; then
     model_name=$variable"_"$date_tag"_forecast_errors_4"
-    python3 xgb_train_all_forecast_errors.py --variable $variable --first_year $first_year --first_month $first_month --last_year $last_year --last_month $last_month --model_name $model_name --training_data_dir $training_data_dir --model_dir $model_dir > ../log/xgb_train_all_$variable"_"$date_tag.log
+    python3 -u xgb_train_all_forecast_errors.py --variable $variable --first_year $first_year --first_month $first_month --last_year $last_year --last_month $last_month --model_name $model_name --training_data_dir $training_data_dir --model_dir $model_dir > ../log/xgb_train_all_$variable"_"$date_tag.log
 else
     model_name=$variable"_"$date_tag"_default_4"
-    python3 xgb_train_all.py --variable $variable --first_year $first_year --first_month $first_month --last_year $last_year --last_month $last_month --model_name $model_name --training_data_dir $training_data_dir --model_dir $model_dir > ../log/xgb_train_all_$variable"_"$date_tag.log
+    python3 -u xgb_train_all.py --variable $variable --first_year $first_year --first_month $first_month --last_year $last_year --last_month $last_month --model_name $model_name --training_data_dir $training_data_dir --model_dir $model_dir > ../log/xgb_train_all_$variable"_"$date_tag.log
 fi
 
 echo "XGB model run ENDS"
