@@ -11,19 +11,21 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.
 
 WORKDIR /meps_ml_correction
 
-ENV WS_TAG=20251111
-ENV WG_TAG=20251111
-ENV TA_TAG=20251111
-ENV TD_TAG=20251111
-ENV TMAX_TAG=20251111
-ENV TMIN_TAG=20251111
+ENV WS_TAG=20260421
+ENV WG_TAG=20260421
+ENV TA_TAG=20260421
+ENV TD_TAG=20260421
+ENV TMAX_TAG=20260421
+ENV TMIN_TAG=20260421
+
+STATION_TAG="_2026"
 
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_lsm.grib /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_topography.grib /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windspeed.csv /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windgust.csv /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_temperature.csv /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_dewpoint.csv /meps_ml_correction
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windspeed$STATION_TAG.csv /meps_ml_correction/all_stations_windspeed.csv
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windgust$STATION_TAG.csv /meps_ml_correction/all_stations_windgust.csv
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_temperature$STATION_TAG.csv /meps_ml_correction/all_stations_temperature.csv
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_dewpoint$STATION_TAG.csv /meps_ml_correction//all_stations_dewpoint.csv
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windspeed_$WS_TAG.json /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windgust_$WG_TAG.json /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_temperature_$TA_TAG.json /meps_ml_correction
