@@ -43,10 +43,13 @@ MODEL_TMIN="xgb_t_min_"$TMIN_TAG".json"
 QUANTILES_TMIN="quantiles_t_min_"$TMIN_TAG".npz"
    
 # Data from S3
+ANALYSIS_TIME_12=$(date -d "${ANALYSIS_TIME:0:8} ${ANALYSIS_TIME:8:2} -12 hours" +%Y%m%d%H)
 if [ $PRODUCER_ID == 214 ]; then
     bucket="s3://routines-data/meps-ml-correction/prod/"$ANALYSIS_TIME"00/"
+    bucket_12="s3://routines-data/meps-ml-correction/prod/"$ANALYSIS_TIME_12"00/"
 else
     bucket="s3://routines-data/meps-ml-correction/preop/"$ANALYSIS_TIME"00/"
+    bucket_12="s3://routines-data/meps-ml-correction/preop/"$ANALYSIS_TIME_12"00/"
 fi
 FG=$bucket"FFG-MS_10.grib2"
 LCC=$bucket"NL-0TO1_0.grib2"
@@ -71,11 +74,16 @@ T0=$bucket"T-K_0.grib2"
 TD2=$bucket"TD-K_2.grib2"
 TMAX=$bucket"TMAX-K_2.grib2"
 TMIN=$bucket"TMIN-K_2.grib2"
+T2_12=$bucket_12"T-K_2.grib2"
+TD2_12=$bucket_12"TD-K_2.grib2"
+U10_12=$bucket_12"U-MS_10.grib2"
+V10_12=$bucket_12"V-MS_10.grib2"
+FG_12=$bucket_12"FFG-MS_10.grib2"
 
 #If --plot argument is used create figures file
 #mkdir -p figures
 
 #Generating ml corrected forecast for parameter
-$PYTHON xgb_predict_all.py --parameter $PARAMETER --topography_data $TOPO --landseacover_data $LC --fg_data $FG --lcc_data $LCC --mld_data $MLD --p_data $P0 --t2_data $T2 --t850_data $T850 --tke925_data $TKE925 --u10_data $U10 --u850_data $U850 --u65_data $U65 --v10_data $V10 --v850_data $V850 --v65_data $V65 --ugust_data $UGUST --vgust_data $VGUST --z500_data $Z500 --z1000_data $Z1000 --z0_data $Z0 --r2_data $R2 --t0_data $T0 --td2_data $TD2 --tmax_data $TMAX --tmin_data $TMIN --model_ws $MODEL_WS --quantiles_ws $QUANTILES_WS --model_wg $MODEL_WG --quantiles_wg $QUANTILES_WG --model_ta $MODEL_TA --quantiles_ta $QUANTILES_TA --model_td $MODEL_TD --quantiles_td $QUANTILES_TD --model_tmax $MODEL_TMAX --quantiles_tmax $QUANTILES_TMAX --model_tmin $MODEL_TMIN --quantiles_tmin $QUANTILES_TMIN --stations_list_ws $STATIONS_WS --stations_list_wg $STATIONS_WG --stations_list_ta $STATIONS_TA --stations_list_td $STATIONS_TD --analysis_time $ANALYSIS_TIME --producer_id $PRODUCER_ID --output $OUTPUT_FILE 
+$PYTHON xgb_predict_all.py --parameter $PARAMETER --topography_data $TOPO --landseacover_data $LC --fg_data $FG --lcc_data $LCC --mld_data $MLD --p_data $P0 --t2_data $T2 --t850_data $T850 --tke925_data $TKE925 --u10_data $U10 --u850_data $U850 --u65_data $U65 --v10_data $V10 --v850_data $V850 --v65_data $V65 --ugust_data $UGUST --vgust_data $VGUST --z500_data $Z500 --z1000_data $Z1000 --z0_data $Z0 --r2_data $R2 --t0_data $T0 --td2_data $TD2 --tmax_data $TMAX --tmin_data $TMIN --t2_data_12 $T2_12 --td2_data_12 $TD2_12 --u10_data_12 $U10_12 --v10_data_12 $V10_12 --fg_data_12 $FG_12 --model_ws $MODEL_WS --quantiles_ws $QUANTILES_WS --model_wg $MODEL_WG --quantiles_wg $QUANTILES_WG --model_ta $MODEL_TA --quantiles_ta $QUANTILES_TA --model_td $MODEL_TD --quantiles_td $QUANTILES_TD --model_tmax $MODEL_TMAX --quantiles_tmax $QUANTILES_TMAX --model_tmin $MODEL_TMIN --quantiles_tmin $QUANTILES_TMIN --stations_list_ws $STATIONS_WS --stations_list_wg $STATIONS_WG --stations_list_ta $STATIONS_TA --stations_list_td $STATIONS_TD --analysis_time $ANALYSIS_TIME --producer_id $PRODUCER_ID --output $OUTPUT_FILE 
 
 
