@@ -20,6 +20,7 @@ import quantile_mapping as qm
 import fsspec
 import s3fs
 from multiprocessing import Process, Queue
+from obs_functions import read_obs
 
 def get_shapeofearth(gh):
     """Return correct shape of earth sphere / ellipsoid in proj string format.
@@ -238,13 +239,14 @@ def create_features_data(args, variable):
     metadata = pd.DataFrame(data = {'leadtime': leadtime,'time': time})
     #Take four closest grid points and save them to features array
     point_values = data.reshape(len(data), -1)[:,nearest_array]
-    features = np.empty((len(data), len(all_stations), 22, 4)) #third column length is number of parameters (Obs! fg is read outside the following loop)
+    features = np.empty((len(data), len(all_stations), 28, 4)) #third column length is number of parameters (Obs! fg is read outside the following loop)
     features[:,:,0,:] = point_values
     del data, leadtime, forecasttime
     i = 1
     for param_args in [args.lcc_data,args.mld_data,args.p_data,args.t2_data,args.t850_data,args.tke925_data,args.u10_data,
                        args.u850_data,args.u65_data,args.v10_data,args.v850_data,args.v65_data,args.ugust_data,args.vgust_data,
-                       args.z500_data,args.z1000_data,args.z0_data,args.r2_data,args.t0_data,args.tmax_data,args.tmin_data]:
+                       args.z500_data,args.z1000_data,args.z0_data,args.r2_data,args.t0_data,args.td2_data,args.tmax_data,args.tmin_data,
+                       args.t2_data_12,args.td2_data_12,args.u10_data_12,args.v10_data_12,args.fg_data_12]:
         _, _, data, _, _, _ = read_grib(param_args, False)
         #Take four closest grid points
         point_values = data.reshape(len(data), -1)[:,nearest_array]
@@ -253,6 +255,67 @@ def create_features_data(args, variable):
         i += 1
 
     return features, metadata
+
+
+def order_by_weights(stations_all, features):
+    """ 
+    This function orderes feature 4 grid point values based on weights
+    - stations_all: pandas dataframe that has column for weights
+    - features: four dimensional numpy.ndarray where fourth dimension is parameter values in 4 closest grid cells 
+    """ 
+    weights_array = np.array(stations_all['weights'].str[1:-1].str.split(',',expand=True).astype(float))
+    order_weights = np.flip(weights_array.argsort(axis=1), axis=1)
+    luku = 0
+    for i in range(0,features.shape[1]):
+        features_one_station = features[:,i,:,:]
+        if (luku == 0):
+            features_sorted = features_one_station[:,:,order_weights[i]][:,None,:,:]
+        else:
+            features_sorted = np.concatenate((features_sorted, features_one_station[:,:,order_weights[i]][:,None,:,:]), axis=1)
+        luku += 1
+    return features_sorted
+
+
+def add_t_inv_features(features, features_list):
+    #Add new features to features array t850-t2m, t2m-t0m, t850-t0m
+    features_list_new = features_list.copy()
+    t2m_iloc = features_list.index("t2m")
+    t850_iloc = features_list.index("t850")
+    t0m_iloc = features_list.index("t0m")
+    t850_t2m_features = features[:,:,t850_iloc] - features[:,:,t2m_iloc]
+    t2m_t0m_features = features[:,:,t2m_iloc] - features[:,:,t0m_iloc]
+    t850_t0m_features = features[:,:,t850_iloc] - features[:,:,t0m_iloc]
+    features_new = np.concatenate([features, t850_t2m_features[:,:,np.newaxis], t2m_t0m_features[:,:,np.newaxis], t850_t0m_features[:,:,np.newaxis]], axis=2)
+    features_list_new.extend(["t850_t2m", "t2m_t0m", "t850_t0m"])
+    return features_new, features_list_new
+
+
+def add_error_features(features, features_list, feature_variable, feature_variable_12, observations_latest):
+    #Create error features using 12 hours lagged forecast and observations
+    features_list_new = features_list.copy()
+    features_new = features.copy()
+    #Create error feature fe_0h
+    if len(features_new.shape)==4:
+        forecast_errors_0h = np.repeat(feature_variable[0][np.newaxis,:] - np.repeat(np.array(observations_latest['obs_0h'])[np.newaxis,:,np.newaxis],4,axis=2), features.shape[0],axis=0)
+    else:
+        forecast_errors_0h = np.repeat(feature_variable[0][np.newaxis,:] - np.array(observations_latest['obs_0h'])[np.newaxis,:], features.shape[0],axis=0)
+    #Replace NaN values with zeroes
+    forecast_errors_0h = np.nan_to_num(forecast_errors_0h, nan=0.0)
+    features_new =  np.concatenate([features_new, forecast_errors_0h[:,:,np.newaxis]], axis=2)
+    features_list_new.append("fe_0h")
+    for i in [3,6,9,12]:
+        #Create error features fe_a12_3h, fe_a12_6h, fe_a12_9h, fe_a12_12h
+        obs_column = 'obs_' + str(12-i) + 'h'
+        if len(features_new.shape)==4:
+            forecast_errors_i = np.repeat(feature_variable_12[i][np.newaxis,:] - np.repeat(np.array(observations_latest[obs_column])[np.newaxis,:,np.newaxis],4,axis=2), features.shape[0],axis=0)
+        else:
+            forecast_errors_i = np.repeat(feature_variable_12[i][np.newaxis,:] - np.array(observations_latest[obs_column])[np.newaxis,:], features.shape[0],axis=0)
+        #Replace NaN values with zeroes
+        forecast_errors_i = np.nan_to_num(forecast_errors_i, nan=0.0)
+        features_new =  np.concatenate([features_new, forecast_errors_i[:,:,np.newaxis]], axis=2)
+        features_list_new.append(f'fe_a12_{i}h')
+
+    return features_new, features_list_new
 
 
 def modify_features_for_xgb_model(variable, args, features, metadata):
@@ -264,28 +327,98 @@ def modify_features_for_xgb_model(variable, args, features, metadata):
 
     #Interpolate features to station points using 4 closest grid values
     weights  = np.array(all_stations['weights'].str[1:-1].str.split(',',expand=True).astype(float))
-    features = np.sum(np.multiply(features, weights[np.newaxis,:,np.newaxis,:]), axis=3)
-    
+    if interpolate_to_points:
+        features = np.sum(np.multiply(features, weights[np.newaxis,:,np.newaxis,:]), axis=3)
+    else: 
+        #Order features based on weights (highest weight first)
+        features = order_by_weights(all_stations, features)
+
     all_features_list  = ["fg","lcc","mld","p","t2m","t850","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m", 
-                          "z500","z1000","z0m","rh2m","t0m","tmax","tmin"]
-    #Select features for given parameter
-    if (variable == "windspeed"): features_list = ["fg","lcc","mld","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","rh2m","t0m"]
-    if (variable == "windgust"): features_list = ["fg","lcc","mld","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","rh2m","t0m"]
-    if (variable == "temperature"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u850","v850","z500","z1000","rh2m","t0m","tmax","tmin"]
-    if (variable == "dewpoint"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u850","v850","z500","z1000","rh2m","t0m","tmax","tmin"]
-    if (variable == "t_max"): features_list = ["fg","lcc","mld","t2m","t850","u850","v850","z500","rh2m","t0m","tmax","tmin"]
-    if (variable == "t_min"): features_list = ["fg","lcc","mld","t2m","t850","u10m","v10m","z500","rh2m","t0m","tmax","tmin"]
+                          "z500","z1000","z0m","rh2m","t0m","td2m","tmax","tmin","t2m_12","td2m_12","u10m_12","v10m_12","fg_12"]
+    
+    if (variable == "windspeed"):
+            iloc_u10 = [all_features_list.index(feature) for feature in ["u10m"]]
+            iloc_v10 = [all_features_list.index(feature) for feature in ["v10m"]]
+            feature_variable = np.sqrt(np.power(features[:,:,iloc_u10[0]],2) + np.power(features[:,:,iloc_v10[0]],2))
+            iloc_u10_12 = [all_features_list.index(feature) for feature in ["u10m_12"]]
+            iloc_v10_12 = [all_features_list.index(feature) for feature in ["v10m_12"]]
+            feature_variable_12 = np.sqrt(np.power(features[:,:,iloc_u10_12[0]],2) + np.power(features[:,:,iloc_v10_12[0]],2))
+    elif (variable == "windgust"):
+            iloc = [all_features_list.index(feature) for feature in ["fg"]]
+            feature_variable = features[:,:,iloc[0]]
+            iloc_12 = [all_features_list.index(feature) for feature in ["fg_12"]]
+            feature_variable_12 = features[:,:,iloc_12[0]]
+    elif ((variable == "temperature") | (variable == "t_max") | (variable == "t_min")): 
+            iloc = [all_features_list.index(feature) for feature in ["t2m"]]
+            feature_variable = features[:,:,iloc[0]]
+            iloc_12 = [all_features_list.index(feature) for feature in ["t2m_12"]]
+            feature_variable_12 = features[:,:,iloc_12[0]]   
+    elif (variable == "dewpoint"):
+            iloc = [all_features_list.index(feature) for feature in ["td2m"]]
+            feature_variable = features[:,:,iloc[0]]
+            iloc_12 = [all_features_list.index(feature) for feature in ["td2m_12"]]
+            feature_variable_12 = features[:,:,iloc_12[0]]
+
+    if error_features:
+        #Add temperature inversion features
+        features, all_features_list = add_t_inv_features(features, all_features_list)
+
+        if (variable == "t_max") | (variable == "t_min"):
+            observations_latest = read_obs("temperature", args.analysis_time, all_stations) #Use temperature errors also for tmax and tmin
+        else:
+            observations_latest = read_obs(variable, args.analysis_time, all_stations)
+
+        #Select features for given parameter and create error features using 12 hours lagged forecast and observations
+        if (variable == "windspeed"): features_list = ["fg","lcc","mld","t2m","t850","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","rh2m","t0m","t850_t2m","t2m_t0m","t850_t0m"]
+        if (variable == "windgust"): features_list = ["fg","lcc","mld","t2m","t850","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","rh2m","t0m","t850_t2m","t2m_t0m","t850_t0m"]
+        if (variable == "temperature"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u850","v850","z500","z1000","rh2m","t0m","tmax","tmin","t850_t2m","t2m_t0m","t850_t0m"]
+        if (variable == "t_max"): features_list = ["fg","lcc","mld","t2m","t850","u850","v850","z500","rh2m","t0m","tmax","tmin","t850_t2m","t2m_t0m","t850_t0m"]
+        if (variable == "t_min"): features_list = ["fg","lcc","mld","t2m","t850","u10m","v10m","z500","rh2m","t0m","tmax","tmin","t850_t2m","t2m_t0m","t850_t0m"]
+        if (variable == "dewpoint"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u850","v850","z500","z1000","rh2m","t0m","tmax","tmin","t850_t2m","t2m_t0m","t850_t0m"]
+    else:
+        if (variable == "windspeed"): features_list = ["fg","lcc","mld","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","rh2m","t0m"]
+        if (variable == "windgust"): features_list = ["fg","lcc","mld","tke925","u10m","u850","u60_l","v10m","v850","v60_l","ugust10m","vgust10m","rh2m","t0m"]
+        if (variable == "temperature"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u850","v850","z500","z1000","rh2m","t0m","tmax","tmin"]
+        if (variable == "dewpoint"): features_list = ["fg","lcc","mld","p","t2m","t850","tke925","u850","v850","z500","z1000","rh2m","t0m","tmax","tmin"]
+        if (variable == "t_max"): features_list = ["fg","lcc","mld","t2m","t850","u850","v850","z500","rh2m","t0m","tmax","tmin"]
+        if (variable == "t_min"): features_list = ["fg","lcc","mld","t2m","t850","u10m","v10m","z500","rh2m","t0m","tmax","tmin"]
+        
+    #Calculate point forecasts
+    if (variable == "t_max"):
+        iloc = [all_features_list.index(feature) for feature in ["tmax"]]
+        variable_forecasts = features[:,:,iloc[0]]
+    elif (variable == "t_min"):
+        iloc = [all_features_list.index(feature) for feature in ["tmin"]]
+        variable_forecasts = features[:,:,iloc[0]]
+    else:
+        variable_forecasts = feature_variable
+    
+    #Calculate point forecasts for station points
+    if len(variable_forecasts.shape) == 3:
+        order_weights = np.flip(weights.argsort(axis=1), axis=1)
+        weights_sorted = np.take_along_axis(weights, order_weights, axis=1)
+        forecasts_point_2d = np.sum(np.multiply(variable_forecasts, weights_sorted[np.newaxis,:,:]), axis=2)
+    else:
+        forecasts_point_2d = variable_forecasts
+
     ilocs = [all_features_list.index(feature) for feature in features_list]
     features = features[:,:,ilocs]
 
+    if error_features:
+        #Create error features using 12 hours lagged forecast and observations
+        features, features_list = add_error_features(features, features_list, feature_variable, feature_variable_12, observations_latest)
+
     #Time lagged features, now 2 lags
+    #Take only index of features names that do not contain fe (forecast_error features are not lagged)
+    features_included = np.asarray([i for i, feature in enumerate(features_list) if "fe" not in feature], dtype=np.intp)
     n_lags = 2
     lt_ehto = (metadata['leadtime'] >= n_lags) & (metadata['leadtime'] <= 66)
     features_all_t = features[lt_ehto]
     for i in range(1,n_lags+1):
         features_t = features[(metadata['leadtime'] >= (n_lags-i)) & (metadata['leadtime'] <= (66-i))]
+        features_t_inc = features_t[:, :, features_included]
         #Features must be ordered primarily based on leadtime and secondary on time
-        features_all_t = np.concatenate((features_all_t, features_t), axis=2)
+        features_all_t = np.concatenate((features_all_t, features_t_inc), axis=2)
 
     #Create time features
     datetime_object = pd.to_datetime(metadata['time'], format = '%Y-%m-%d %H:%M:%S')
@@ -308,42 +441,21 @@ def modify_features_for_xgb_model(variable, args, features, metadata):
     station_features = np.repeat(np.array(features_station)[None,:,:],len(metadata)-n_lags, axis=0).reshape(-1,6)
 
     #Combine all features to one two dimensional array
-    features2 = features_all_t.reshape(-1,features_all_t.shape[2])
-    all_features = np.concatenate((features2, time_features, station_features),axis=1)
-
-    return all_features, features_list
-
-
-def xgb_predict(all_features, args, features_list, variable):
-    '''Make xgb prediction and quantile mapping for given variable'''
-    #Load forecast field based on parameter name in features_list
-    if (variable == "windspeed"):
-        u10_iloc = features_list.index("u10m")
-        v10_iloc = features_list.index("v10m")
-        forecasts_point = np.sqrt(np.power(all_features[:,u10_iloc],2) + np.power(all_features[:,v10_iloc],2))
-    elif (variable == "windgust"):
-        fg_iloc = features_list.index("fg")
-        forecasts_point = all_features[:,fg_iloc]
-    elif (variable == "temperature"):
-        t2m_iloc = features_list.index("t2m")
-        forecasts_point = all_features[:,t2m_iloc]
-    elif (variable == "dewpoint"):
-        t2m_iloc = features_list.index("t2m")
-        rh2m_iloc = features_list.index("rh2m")
-        T = all_features[:,t2m_iloc]
-        RH = all_features[:,rh2m_iloc] #RH is 0...1 (not in percents)
-        RH[RH == 0] = 0.001
-        RH[RH>1] = 1
-        L = 461.5
-        Rw = 2.501*10**6
-        forecasts_point = T/(1-(T*np.log(RH)*(L/Rw))) #Same formula than in himan calculation
-    elif (variable == "t_max"):
-        tmax_iloc = features_list.index("tmax")
-        forecasts_point = all_features[:,tmax_iloc]
-    elif (variable == "t_min"):
-        tmin_iloc = features_list.index("tmin")
-        forecasts_point = all_features[:,tmin_iloc]
+    if len(features_all_t.shape) == 4:
+        features3 = features_all_t.reshape(features_all_t.shape[0],features_all_t.shape[1],features_all_t.shape[2]*features_all_t.shape[3])
+        features2 = features3.reshape(features3.shape[0]*features3.shape[1],features3.shape[2])
+    else:
+        features2 = features_all_t.reshape(-1,features_all_t.shape[2])
     
+    all_features = np.concatenate((features2, time_features, station_features),axis=1)
+    forecasts_point = forecasts_point_2d[lt_ehto].reshape(-1)
+
+    return all_features, forecasts_point
+
+
+def xgb_prediction(all_features, forecasts_point, args, variable):
+    '''Make xgb prediction and quantile mapping for given variable'''
+        
     #Load xgb model
     xgb_model = xgb.XGBRegressor()
     if (variable == "windspeed"): xgb_model.load_model(args.model_ws)
@@ -372,9 +484,14 @@ def xgb_predict(all_features, args, features_list, variable):
         xgb_forecast_qm[xgb_forecast_qm > 10] = qm.interp_extrap(x=xgb_forecast[xgb_forecast > 10], xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
         xgb_forecast_qm[xgb_forecast_qm < 2] = qm.interp_extrap(x=xgb_forecast[xgb_forecast < 2], xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
     else:
-        xgb_forecast_qm = qm.interp_extrap(x=xgb_forecast, xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
-    #Return both xgb_forecast_qm and forecasts_point
-    return xgb_forecast_qm, forecasts_point
+        #No quantile mapping for temperature variables in January and February
+        if (int(args.analysis_time[4:6]) in [1,2]): 
+            xgb_forecast_qm = xgb_forecast.copy()
+        else:
+            xgb_forecast_qm = qm.interp_extrap(x=xgb_forecast, xp=quantiles['q_ctr'], yp=quantiles['q_obs'])
+    
+    return xgb_forecast_qm
+
 
 def select_indices(ahour):
     '''Select indeces for tmin and tmax combining based on hour of analysis time.
@@ -412,19 +529,19 @@ def ml_predict(args, features, metadata, variable):
     each element is for one lead time'''
     if (variable == "windspeed") | (variable == "windgust") | (variable == "dewpoint"):
         #Create features for xgb model
-        all_features, features_list = modify_features_for_xgb_model(variable, args, features, metadata)
+        all_features, forecasts_point = modify_features_for_xgb_model(variable, args, features, metadata, interpolate_to_points, error_features)
         #Make xgb prediction
-        xgb_forecast_qm, forecasts_point = xgb_predict(all_features, args, features_list, variable)
+        xgb_forecast_qm = xgb_prediction(all_features, forecasts_point, args, variable)
     elif variable == "temperature": #Make min/max combining for temperature forecasts
         #Create features for xgb model
-        all_features, features_list = modify_features_for_xgb_model(variable, args, features, metadata)
-        all_features_tmax, features_list_tmax = modify_features_for_xgb_model("t_max", args, features, metadata)
-        all_features_tmin, features_list_tmin = modify_features_for_xgb_model("t_min", args, features, metadata)
+        all_features, forecasts_point = modify_features_for_xgb_model(variable, args, features, metadata, interpolate_to_points, error_features)
+        all_features_tmax, forecasts_point_tmax = modify_features_for_xgb_model("t_max", args, features, metadata, interpolate_to_points, error_features)
+        all_features_tmin, forecasts_point_tmin = modify_features_for_xgb_model("t_min", args, features, metadata, interpolate_to_points, error_features)
         
         #Make xgb prediction
-        xgb_forecast_qm_ta, forecasts_point = xgb_predict(all_features, args, features_list, variable)
-        xgb_forecast_qm_tmax, _ = xgb_predict(all_features_tmax, args, features_list_tmax, "t_max")
-        xgb_forecast_qm_tmin, _ = xgb_predict(all_features_tmin, args, features_list_tmin, "t_min")
+        xgb_forecast_qm_ta = xgb_prediction(all_features, forecasts_point, args, variable)
+        xgb_forecast_qm_tmax = xgb_prediction(all_features_tmax, forecasts_point_tmax, args, "t_max")
+        xgb_forecast_qm_tmin = xgb_prediction(all_features_tmin, forecasts_point_tmin, args, "t_min")
         
         ##########################################
         #Combine min/max forecasts to temperature#
