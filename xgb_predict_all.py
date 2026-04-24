@@ -45,6 +45,11 @@ def parse_command_line():
     parser.add_argument("--td2_data", action="store", type=str, required=True)
     parser.add_argument("--tmax_data", action="store", type=str, required=True)
     parser.add_argument("--tmin_data", action="store", type=str, required=True)
+    parser.add_argument("--t2_data_12", action="store", type=str, required=True)
+    parser.add_argument("--td2_data_12", action="store", type=str, required=True)
+    parser.add_argument("--u10_data_12", action="store", type=str, required=True)
+    parser.add_argument("--v10_data_12", action="store", type=str, required=True)
+    parser.add_argument("--fg_data_12", action="store", type=str, required=True)
     parser.add_argument("--model_ws", action="store", type=str, required=True)
     parser.add_argument("--quantiles_ws", action="store", type=str, required=True)
     parser.add_argument("--model_wg", action="store", type=str, required=True)
@@ -91,11 +96,11 @@ def main():
 
     #ML prediction
     mlt = time.time()
-    ml_predictions = ml_predict(args, features, metadata, args.parameter)
+    ml_predictions = ml_predict(args, features, metadata, args.parameter, interpolate_to_points=False, error_features = True)
     if (args.parameter == "windgust"):
-        ml_predictions_ws = ml_predict(args, features_ws, metadata, "windspeed")
+        ml_predictions_ws = ml_predict(args, features_ws, metadata, "windspeed", interpolate_to_points=False, error_features = True)
     elif (args.parameter == "dewpoint"):
-        ml_predictions_ta = ml_predict(args, features_ta, metadata, "temperature")
+        ml_predictions_ta = ml_predict(args, features_ta, metadata, "temperature", interpolate_to_points=False, error_features = True)
     print("Producing ML forecasts takes:", round(time.time()-mlt, 1), "seconds")
 
     #Gridding
