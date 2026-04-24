@@ -18,14 +18,12 @@ ENV TD_TAG=20260421
 ENV TMAX_TAG=20260421
 ENV TMIN_TAG=20260421
 
-STATION_TAG="_2026"
-
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_lsm.grib /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/meps_topography.grib /meps_ml_correction
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windspeed$STATION_TAG.csv /meps_ml_correction/all_stations_windspeed.csv
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windgust$STATION_TAG.csv /meps_ml_correction/all_stations_windgust.csv
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_temperature$STATION_TAG.csv /meps_ml_correction/all_stations_temperature.csv
-ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_dewpoint$STATION_TAG.csv /meps_ml_correction//all_stations_dewpoint.csv
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windspeed_2026.csv /meps_ml_correction/all_stations_windspeed.csv
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_windgust_2026.csv /meps_ml_correction/all_stations_windgust.csv
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_temperature_2026.csv /meps_ml_correction/all_stations_temperature.csv
+ADD https://lake.fmi.fi/ml-models/meps-ml-correction/all_stations_dewpoint_2026.csv /meps_ml_correction//all_stations_dewpoint.csv
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windspeed_$WS_TAG.json /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_windgust_$WG_TAG.json /meps_ml_correction
 ADD https://lake.fmi.fi/ml-models/meps-ml-correction/xgb_temperature_$TA_TAG.json /meps_ml_correction
