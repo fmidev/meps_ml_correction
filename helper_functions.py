@@ -318,7 +318,7 @@ def add_error_features(features, features_list, feature_variable, feature_variab
     return features_new, features_list_new
 
 
-def modify_features_for_xgb_model(variable, args, features, metadata):
+def modify_features_for_xgb_model(variable, args, features, metadata, interpolate_to_points = True, error_features = False):
     '''Select features for given parameter, add station and time features, and add time lagged features'''
     if (variable == "windspeed"): all_stations = pd.read_csv(args.stations_list_ws)
     if (variable == "windgust"): all_stations = pd.read_csv(args.stations_list_wg)
@@ -524,7 +524,7 @@ def select_indices(ahour):
     return indices_max, indices_min
 
 
-def ml_predict(args, features, metadata, variable):
+def ml_predict(args, features, metadata, variable, interpolate_to_points = True, error_features = False):
     '''Calculate ml_correction and return predicted corrections in list where 
     each element is for one lead time'''
     if (variable == "windspeed") | (variable == "windgust") | (variable == "dewpoint"):
