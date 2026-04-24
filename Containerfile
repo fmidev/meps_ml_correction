@@ -1,5 +1,7 @@
 FROM rockylinux/rockylinux:8
 
+ARG BRANCH=main
+
 RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
              https://download.fmi.fi/smartmet-open/rhel/8/x86_64/smartmet-open-release-latest-8.noarch.rpm && \
     dnf -y install dnf-plugins-core && \
@@ -7,7 +9,7 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.
     dnf config-manager --setopt="epel.exclude=eccodes*" --save && \
     dnf -y --setopt=install_weak_deps=False install python39 python39-pip python39-setuptools eccodes git && \
     dnf -y clean all && rm -rf /var/cache/dnf && \
-    git clone https://github.com/fmidev/meps_ml_correction.git
+    git clone -b "$BRANCH" --single-branch https://github.com/fmidev/meps_ml_correction.git
 
 WORKDIR /meps_ml_correction
 
