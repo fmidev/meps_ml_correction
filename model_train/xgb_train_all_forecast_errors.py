@@ -79,6 +79,12 @@ labels, features, metadata_all = copy_tmax_tmin_to_prev_hours(labels, features, 
 features, features_list = select_features_4(features, variable)
 print("Features:", features_list)
 
+#Add t_inv and errorfeatures
+features, features_list = add_t_inv_features_4(features, features_list)
+print("Features after adding t_inv:", features_list)
+features, features_list = add_error_features_4(features, features_list, labels, metadata_all, variable, prev_hours = [12])
+print("Features after adding error features:", features_list)
+
 #Order by time and leadtime, and modify metadata, features and labels
 features, labels, metadata_ordered = order_by_time_and_leadtime_4(metadata_all, features, labels)
 
@@ -122,16 +128,20 @@ print("x_train array size for xgb model:", x_trainval.shape, "\n")
 print("XGB training starts...")
 
 if ((variable == "windspeed") | (variable == "windgust")):
-    objective = 'reg:squarederror' #'reg:absoluteerror'
-    eval_metric = 'rmse' #'mae'
-    best_params_path = f"{model_dir}best_params/best_xgb_params_windspeed_default.json"
+    objective = 'reg:absoluteerror'
+    eval_metric = 'mae'
+    best_params_path = f"{model_dir}best_params/best_xgb_params_windspeed_None_error_features_12_mae.json"
 elif ((variable == "temperature") | (variable == "dewpoint") | (variable == "t_max") | (variable == "t_min")):
     objective = 'reg:squarederror'
     eval_metric = 'rmse'
-    best_params_path = f"{model_dir}best_params/best_xgb_params_temperature_default.json"
+    best_params_path = f"{model_dir}best_params/best_xgb_params_temperature_None_error_features_12_4.json"
 
 with open(best_params_path, "r") as f:
     best_params = json.load(f)
+
+print(f"Best parameters for xgb model from file: {best_params_path}")
+print(best_params)
+print("objective:", objective)
 
 xgb_model = xgb.XGBRegressor(
     objective=objective,
@@ -142,14 +152,6 @@ xgb_model = xgb.XGBRegressor(
     n_jobs=10  # Default is all available CPU cores
 )
     
-# Filter to show only those explicitly set
-used_params = {k: v for k, v in xgb_model.get_params().items() if k in [
-    "tree_method", "n_estimators", "learning_rate", "max_depth", 
-    "subsample", "colsample_bytree", "reg_alpha", "objective"
-]}
-print("XGB model parameters:")
-print(used_params)
-
 start = time.time()
 xgb_model.fit(x_trainval, y_trainval)
 print("XGB model run time",str(math.floor((time.time() - start)/60)) + " minutes and " + str(round((time.time() - start) - math.floor((time.time() - start)/60)*60,1)) + " seconds")

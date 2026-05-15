@@ -1,5 +1,7 @@
 FROM rockylinux/rockylinux:8
 
+ARG BRANCH=main
+
 RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
              https://download.fmi.fi/smartmet-open/rhel/8/x86_64/smartmet-open-release-latest-8.noarch.rpm && \
     dnf -y install dnf-plugins-core && \
@@ -7,25 +9,25 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.
     dnf config-manager --setopt="epel.exclude=eccodes*" --save && \
     dnf -y --setopt=install_weak_deps=False install python39 python39-pip python39-setuptools eccodes git && \
     dnf -y clean all && rm -rf /var/cache/dnf && \
-    git clone https://github.com/fmidev/meps_ml_correction.git
+    git clone -b "$BRANCH" --single-branch https://github.com/fmidev/meps_ml_correction.git
 
 WORKDIR /meps_ml_correction
 
-ENV WS_TAG=20251111
-ENV WG_TAG=20251111
-ENV TA_TAG=20251111
-ENV TD_TAG=20251111
-ENV TMAX_TAG=20251111
-ENV TMIN_TAG=20251111
+ENV WS_TAG=20260421
+ENV WG_TAG=20260421
+ENV TA_TAG=20260421
+ENV TD_TAG=20260421
+ENV TMAX_TAG=20260421
+ENV TMIN_TAG=20260421
 
 ARG S3_HOST=https://lake.fmi.fi
 
 ADD ${S3_HOST}/ml-models/meps-ml-correction/meps_lsm.grib /meps_ml_correction
 ADD ${S3_HOST}/ml-models/meps-ml-correction/meps_topography.grib /meps_ml_correction
-ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_windspeed.csv /meps_ml_correction
-ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_windgust.csv /meps_ml_correction
-ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_temperature.csv /meps_ml_correction
-ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_dewpoint.csv /meps_ml_correction
+ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_windspeed_2026.csv /meps_ml_correction/all_stations_windspeed.csv
+ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_windgust_2026.csv /meps_ml_correction/all_stations_windgust.csv
+ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_temperature_2026.csv /meps_ml_correction/all_stations_temperature.csv
+ADD ${S3_HOST}/ml-models/meps-ml-correction/all_stations_dewpoint_2026.csv /meps_ml_correction/all_stations_dewpoint.csv
 ADD ${S3_HOST}/ml-models/meps-ml-correction/xgb_windspeed_$WS_TAG.json /meps_ml_correction
 ADD ${S3_HOST}/ml-models/meps-ml-correction/xgb_windgust_$WG_TAG.json /meps_ml_correction
 ADD ${S3_HOST}/ml-models/meps-ml-correction/xgb_temperature_$TA_TAG.json /meps_ml_correction
