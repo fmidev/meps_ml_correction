@@ -92,7 +92,7 @@ def read_file_from_s3(grib_file):
     return fsspec.open_local(
         uri,
         mode="rb",
-        s3={"anon": True, "client_kwargs": {"endpoint_url": "https://lake.fmi.fi"}},
+        s3={"anon": True, "client_kwargs": {"endpoint_url": os.environ.get("S3_HOST", "https://lake.fmi.fi")}},
     )
 
 
@@ -904,7 +904,7 @@ def write_grib(args, analysistime, forecasttime, data):
                 "anon": False,
                 "key": os.environ["S3_ACCESS_KEY_ID"],
                 "secret": os.environ["S3_SECRET_ACCESS_KEY"],
-                "client_kwargs": {"endpoint_url": "https://lake.fmi.fi"},
+                "client_kwargs": {"endpoint_url": os.environ.get("S3_HOST", "https://lake.fmi.fi")},
             },
         )
         with openfile as fpout:
