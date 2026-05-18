@@ -6,7 +6,7 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.
     dnf config-manager --set-enabled powertools && \
     dnf config-manager --setopt="epel.exclude=eccodes*" --save && \
     dnf -y --setopt=install_weak_deps=False install python39 python39-pip python39-setuptools eccodes git && \
-    dnf -y clean all && rm -rf /var/cache/dnf &&
+    dnf -y clean all && rm -rf /var/cache/dnf
 
 ADD . /meps_ml_correction
 
