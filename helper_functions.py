@@ -6,6 +6,7 @@ Created on Wed Dec 20 17:15:33 2023
 """
 
 import os
+from pyexpat import features
 import eccodes as ecc
 import gridpp
 import numpy as np
@@ -99,6 +100,23 @@ def read_file_from_s3(grib_file):
     )
 
 
+def read_file_from_s3_lagged(grib_file):
+    uri = "simplecache::{}".format(grib_file)
+
+    #Check if file exists and return None if it doesn't
+    if not s3fs.S3FileSystem(anon=True, client_kwargs={"endpoint_url": os.environ.get("S3_HOSTNAME", "https://lake.fmi.fi")}).exists(grib_file):
+        return None
+
+    return fsspec.open_local(
+        uri,
+        mode="rb",
+        s3={"anon": False,
+            "key": os.environ["S3_ACCESS_KEY_ID"],
+            "secret": os.environ["S3_SECRET_ACCESS_KEY"],
+            "client_kwargs": {"endpoint_url": os.environ.get("S3_HOSTNAME", "https://lake.fmi.fi")}},
+    )
+
+
 def read_grib(gribfile, read_coordinates=False):
     """Read first message from grib file and return content.
     List of coordinates is only returned on request, as it's quite
@@ -113,6 +131,106 @@ def read_grib(gribfile, read_coordinates=False):
     
     if gribfile.startswith("s3://"):
         wrk_gribfile = read_file_from_s3(gribfile)
+        
+    lons = []
+    lats = []
+    
+    with open(wrk_gribfile, "rb") as fp:
+        # print("Reading {}".format(gribfile))
+        
+        while True:
+            try:
+                gh = ecc.codes_grib_new_from_file(fp)
+            except ecc.WrongLengthError as e:
+                print(e)
+                file_stats = os.stat(wrk_gribfile)
+                print("Size of {}: {}".format(wrk_gribfile, file_stats.st_size))
+                sys.exit(1)
+            
+            if gh is None:
+                break
+            
+            ni = ecc.codes_get_long(gh, "Nx")
+            nj = ecc.codes_get_long(gh, "Ny")
+            dataDate = ecc.codes_get_long(gh, "dataDate")
+            dataTime = ecc.codes_get_long(gh, "dataTime")
+            forecastTime = ecc.codes_get_long(gh, "endStep")
+            leadtime.append(forecastTime)
+            analysistime = datetime.datetime.strptime(
+                "{}.{:04d}".format(dataDate, dataTime), "%Y%m%d.%H%M"
+            )
+            
+            ftime = analysistime + datetime.timedelta(hours=forecastTime)
+            forecasttime.append(ftime)
+            
+            tempvals = ecc.codes_get_values(gh).reshape(nj, ni)
+            values.append(tempvals)
+
+            if read_coordinates and len(lons) == 0:
+                projstr = get_projstr(gh)
+                
+                di = ecc.codes_get_double(gh, "DxInMetres")
+                dj = ecc.codes_get_double(gh, "DyInMetres")
+                
+                proj_to_ll = pyproj.Transformer.from_crs(projstr, "epsg:4326")
+                
+                for j in range(nj):
+                    y = j * dj
+                    for i in range(ni):
+                        x = i * di
+                        
+                        lat, lon = proj_to_ll.transform(x, y)
+                        lons.append(lon)
+                        lats.append(lat)
+            ecc.codes_release(gh)
+        
+
+        #Order values, leadtime, forecasttime based on leadtime
+        sorted_indices = np.argsort(leadtime)
+        values = [values[i] for i in np.array(sorted_indices)]
+        leadtime.sort()
+        forecasttime.sort()
+                                                        
+        if read_coordinates == False and len(values) == 1:
+            return (
+                None,
+                None,
+                np.asarray(values).reshape(nj, ni),
+                leadtime,
+                analysistime,
+                forecasttime,
+            )
+        elif read_coordinates == False and len(values) > 1:
+            return None, None, np.asarray(values), leadtime, analysistime, forecasttime
+        else:
+            return (
+                np.asarray(lons).reshape(nj, ni),
+                np.asarray(lats).reshape(nj, ni),
+                np.asarray(values),
+                leadtime,
+                analysistime,
+                forecasttime,
+            )
+
+
+def read_grib_lagged(gribfile, read_coordinates=False):
+    """Read first message from grib file and return content.
+    List of coordinates is only returned on request, as it's quite
+    slow to generate.
+    If the file is missing on S3, None is returned. Made for cases when lagged files might not be available.
+    """
+    forecasttime = []
+    leadtime = []
+    values = []
+    
+    print(f"Reading file {gribfile}")
+    wrk_gribfile = gribfile
+    
+    if gribfile.startswith("s3://"):
+        wrk_gribfile = read_file_from_s3_lagged(gribfile)
+        if wrk_gribfile is None:
+            print(f"File {gribfile} not found on S3. Skipping.")
+            return None, None, [], leadtime, None, forecasttime
         
     lons = []
     lats = []
@@ -243,16 +361,26 @@ def create_features_data(args, variable):
     #Take four closest grid points and save them to features array
     point_values = data.reshape(len(data), -1)[:,nearest_array]
     features = np.empty((len(data), len(all_stations), 28, 4)) #third column length is number of parameters (Obs! fg is read outside the following loop)
+    features[:] = np.nan
     features[:,:,0,:] = point_values
     del data, leadtime, forecasttime
     i = 1
     for param_args in [args.lcc_data,args.mld_data,args.p_data,args.t2_data,args.t850_data,args.tke925_data,args.u10_data,
                        args.u850_data,args.u65_data,args.v10_data,args.v850_data,args.v65_data,args.ugust_data,args.vgust_data,
-                       args.z500_data,args.z1000_data,args.z0_data,args.r2_data,args.t0_data,args.td2_data,args.tmax_data,args.tmin_data,
-                       args.t2_data_12,args.td2_data_12,args.u10_data_12,args.v10_data_12,args.fg_data_12]:
+                       args.z500_data,args.z1000_data,args.z0_data,args.r2_data,args.t0_data,args.td2_data,args.tmax_data,args.tmin_data]:
         _, _, data, _, _, _ = read_grib(param_args, False)
         #Take four closest grid points
         point_values = data.reshape(len(data), -1)[:,nearest_array]
+        features[:,:,i,:] = point_values
+        del data
+        i += 1
+    #Retrieve lagged data and check if available. If no use Nan.
+    for param_args in [args.t2_data_12,args.td2_data_12,args.u10_data_12,args.v10_data_12,args.fg_data_12]:
+        _, _, data, _, _, _ = read_grib_lagged(param_args, False) #Use always false for lagged data
+        if len(data) == 0:
+            point_values = np.full((len(metadata),len(all_stations), 4), np.nan)
+        else:
+            point_values = data.reshape(len(data), -1)[:,nearest_array]
         features[:,:,i,:] = point_values
         del data
         i += 1
