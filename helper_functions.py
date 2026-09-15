@@ -6,7 +6,6 @@ Created on Wed Dec 20 17:15:33 2023
 """
 
 import os
-from pyexpat import features
 import eccodes as ecc
 import gridpp
 import numpy as np
