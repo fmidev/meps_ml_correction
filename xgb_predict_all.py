@@ -85,6 +85,14 @@ def parse_command_line():
 def main():
     args = parse_command_line()
 
+    #Set arguments for interpolate_to_points and error_features
+    if (args.parameter == "windgust") | (args.parameter == "windspeed"):
+        interpolate_to_points = True
+        error_features = False
+    else:
+        interpolate_to_points = False
+        error_features = True
+
     #Read NWP data and create fetures array
     st = time.time()
     features, metadata = create_features_data(args, args.parameter)   
@@ -96,11 +104,11 @@ def main():
 
     #ML prediction
     mlt = time.time()
-    ml_predictions = ml_predict(args, features, metadata, args.parameter, interpolate_to_points=False, error_features = True)
+    ml_predictions = ml_predict(args, features, metadata, args.parameter, interpolate_to_points=interpolate_to_points, error_features = error_features)
     if (args.parameter == "windgust"):
-        ml_predictions_ws = ml_predict(args, features_ws, metadata, "windspeed", interpolate_to_points=False, error_features = True)
+        ml_predictions_ws = ml_predict(args, features_ws, metadata, "windspeed", interpolate_to_points=interpolate_to_points, error_features = error_features)
     elif (args.parameter == "dewpoint"):
-        ml_predictions_ta = ml_predict(args, features_ta, metadata, "temperature", interpolate_to_points=False, error_features = True)
+        ml_predictions_ta = ml_predict(args, features_ta, metadata, "temperature", interpolate_to_points=interpolate_to_points, error_features = error_features)
     print("Producing ML forecasts takes:", round(time.time()-mlt, 1), "seconds")
 
     #Gridding
